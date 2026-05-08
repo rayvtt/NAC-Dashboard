@@ -6,10 +6,6 @@ NAC-PROPERTY-HUB.html
 NAC-RESIDENCE-INDEX.html
 Brochures html/
 
-# Worker config — managed via Cloudflare dashboard, not GitHub
-wrangler.toml
-worker.js
-
 # OS files
 .DS_Store
 Thumbs.db
