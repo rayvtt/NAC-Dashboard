@@ -103,7 +103,7 @@ function json(data, status = 200) {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
     const url      = new URL(request.url)
@@ -118,6 +118,15 @@ export default {
       if (pathname === '/api/tiktok')    return json(await getTikTok(env))
       if (pathname === '/api/analytics') return json(await getAnalytics(env))
       if (pathname === '/api/all')       return json(await getAll(env))
+
+      // ── Blog Analytics ──
+      if (pathname === '/api/track' && request.method === 'POST') {
+        const text = await request.text()
+        const event = JSON.parse(text)
+        ctx.waitUntil(handleTrack(event, env))
+        return json({ ok: true })
+      }
+      if (pathname === '/api/blog/stats') return json(await getBlogStats(url, env))
 
       // ── Agent Control ──
       if (pathname === '/api/agents/run'  && request.method === 'POST') return json(await runAgent(request, env))
@@ -276,6 +285,7 @@ async function getStatus(env) {
     analytics: !!(env.GA4_PROPERTY_ID && env.GA4_CLIENT_EMAIL && env.GA4_PRIVATE_KEY),
     agents:    !!(env.ANTHROPIC_API_KEY),
     kv:        !!(env.NAC_AGENTS),
+    blog:      !!(env.NAC_AGENTS),
   }
 }
 
@@ -500,6 +510,129 @@ async function getGA4Token(env) {
   const { access_token, error } = await res.json()
   if (!access_token) throw new Error(`GA4 token error: ${error}`)
   return access_token
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BLOG ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+async function handleTrack(event, env) {
+  if (!env.NAC_AGENTS) return
+
+  const today = new Date().toISOString().slice(0, 10)
+  const key = `blog:daily:${today}`
+  const raw = await env.NAC_AGENTS.get(key)
+  const day = raw ? JSON.parse(raw) : {
+    v: 0, u: [], c: 0, h: 0, b: 0, t: 0, ss: 0, sc: 0,
+    pages: {}, refs: {}, clicks: [], hovers: []
+  }
+
+  const sid = event.sid || 'anon'
+  const pg = event.page || '/'
+
+  switch (event.type) {
+    case 'pageview':
+      day.v++
+      if (!day.u.includes(sid) && day.u.length < 500) day.u.push(sid)
+      if (!day.pages[pg]) day.pages[pg] = { v: 0, c: 0, t: 0, n: 0 }
+      day.pages[pg].v++
+      if (event.referrer) {
+        try {
+          const ref = new URL(event.referrer).hostname || 'direct'
+          day.refs[ref] = (day.refs[ref] || 0) + 1
+        } catch { day.refs['direct'] = (day.refs['direct'] || 0) + 1 }
+      } else {
+        day.refs['direct'] = (day.refs['direct'] || 0) + 1
+      }
+      break
+    case 'click':
+      day.c++
+      if (day.clicks.length < 200)
+        day.clicks.push({ p: pg, t: (event.text || '').slice(0, 50), h: event.href || '' })
+      if (day.pages[pg]) day.pages[pg].c++
+      break
+    case 'hover':
+      day.h++
+      if (day.hovers.length < 100)
+        day.hovers.push({ p: pg, t: (event.text || '').slice(0, 50) })
+      break
+    case 'leave':
+      if (event.bounce) day.b++
+      if (event.timeOnPage) {
+        day.t += event.timeOnPage
+        if (day.pages[pg]) { day.pages[pg].t += event.timeOnPage; day.pages[pg].n++ }
+      }
+      if (event.scrollDepth) { day.ss += event.scrollDepth; day.sc++ }
+      break
+  }
+
+  await env.NAC_AGENTS.put(key, JSON.stringify(day), { expirationTtl: 86400 * 90 })
+
+  const idxRaw = await env.NAC_AGENTS.get('blog:days')
+  const days = idxRaw ? JSON.parse(idxRaw) : []
+  if (!days.includes(today)) {
+    days.push(today)
+    while (days.length > 90) days.shift()
+    await env.NAC_AGENTS.put('blog:days', JSON.stringify(days))
+  }
+}
+
+async function getBlogStats(url, env) {
+  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
+
+  const numDays = parseInt(url.searchParams.get('days') || '7')
+  const idxRaw = await env.NAC_AGENTS.get('blog:days')
+  const allDays = idxRaw ? JSON.parse(idxRaw) : []
+  const targetDays = allDays.slice(-numDays)
+
+  const dailyData = (await Promise.all(
+    targetDays.map(d => env.NAC_AGENTS.get(`blog:daily:${d}`).then(r => r ? { date: d, ...JSON.parse(r) } : null))
+  )).filter(Boolean)
+
+  let views = 0, clicks = 0, hovers = 0, bounces = 0, totalTime = 0, scrollSum = 0, scrollCount = 0
+  const allSids = new Set()
+  const pageAgg = {}
+  const refAgg = {}
+  const dvArr = []
+  const duArr = []
+  const recentClicks = []
+  const recentHovers = []
+
+  for (const d of dailyData) {
+    views += d.v; clicks += d.c; hovers += d.h; bounces += d.b
+    totalTime += d.t; scrollSum += d.ss || 0; scrollCount += d.sc || 0
+    ;(d.u || []).forEach(s => allSids.add(s))
+    dvArr.push(d.v)
+    duArr.push((d.u || []).length)
+
+    for (const [p, s] of Object.entries(d.pages || {})) {
+      if (!pageAgg[p]) pageAgg[p] = { views: 0, clicks: 0, time: 0, count: 0 }
+      pageAgg[p].views += s.v || 0
+      pageAgg[p].clicks += s.c || 0
+      pageAgg[p].time += s.t || 0
+      pageAgg[p].count += s.n || 0
+    }
+    for (const [r, c] of Object.entries(d.refs || {})) refAgg[r] = (refAgg[r] || 0) + c
+    recentClicks.push(...(d.clicks || []))
+    recentHovers.push(...(d.hovers || []))
+  }
+
+  const topPages = Object.entries(pageAgg)
+    .sort((a, b) => b[1].views - a[1].views).slice(0, 10)
+    .map(([path, s]) => ({ path, views: s.views, clicks: s.clicks, avgTime: s.count > 0 ? Math.round(s.time / s.count) : 0 }))
+
+  const leaveCount = scrollCount || 1
+  return {
+    days: numDays, dates: targetDays,
+    totalViews: views, uniqueVisitors: allSids.size,
+    totalClicks: clicks, totalHovers: hovers,
+    bounceRate: views > 0 ? +((bounces / views) * 100).toFixed(1) : 0,
+    avgTimeOnPage: Math.round(totalTime / leaveCount),
+    avgScrollDepth: Math.round(scrollSum / leaveCount),
+    dailyViews: dvArr, dailyVisitors: duArr,
+    topPages, referrers: refAgg,
+    recentClicks: recentClicks.slice(-30),
+    recentHovers: recentHovers.slice(-20),
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1530,22 +1530,29 @@ body {
 
     <!-- ═══════════════ ANALYTICS PAGE ═══════════════ -->
     <div id="analytics-page" class="page">
-      <div class="connect-banner">
-        <span class="connect-icon">🔗</span>
-        Connect Google Analytics (GA4) or paste your Measurement ID to enable live website data.
-        <button class="btn btn-primary btn-sm" style="margin-left:auto;">Connect GA4</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span style="font-size:20px;">📊</span>
+        <span style="font-weight:700;font-size:16px;">Blog Analytics</span>
+        <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">blog.nomadassetcollective.com</span>
+        <select id="blog-days-select" onchange="fetchBlogStats()" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid var(--gray-200);font-size:12px;">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="fetchBlogStats()">Refresh</button>
       </div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">Page Views</div><div class="stat-value" id="ga-stat-views">9,840</div><div class="stat-change up">↑ 12.1%</div></div>
-        <div class="stat-card orange"><div class="stat-label">Unique Visitors</div><div class="stat-value" id="ga-stat-visitors">4,120</div><div class="stat-change up">↑ 9.4%</div></div>
-        <div class="stat-card green"><div class="stat-label">Avg. Session</div><div class="stat-value" id="ga-stat-session">3m 42s</div><div class="stat-change up">↑ 0:18</div></div>
-        <div class="stat-card purple"><div class="stat-label">Bounce Rate</div><div class="stat-value" id="ga-stat-bounce">38.2%</div><div class="stat-change down">↑ 1.2%</div></div>
-        <div class="stat-card teal"><div class="stat-label">Article Clicks</div><div class="stat-value">2,890</div><div class="stat-change up">↑ 16%</div></div>
-        <div class="stat-card pink"><div class="stat-label">Conversions</div><div class="stat-value">142</div><div class="stat-change up">↑ 4</div></div>
+        <div class="stat-card blue"><div class="stat-label">Page Views</div><div class="stat-value" id="ga-stat-views">—</div><div class="stat-change" id="blog-views-sub"></div></div>
+        <div class="stat-card orange"><div class="stat-label">Unique Visitors</div><div class="stat-value" id="ga-stat-visitors">—</div><div class="stat-change" id="blog-visitors-sub"></div></div>
+        <div class="stat-card green"><div class="stat-label">Avg. Read Time</div><div class="stat-value" id="ga-stat-session">—</div><div class="stat-change" id="blog-time-sub"></div></div>
+        <div class="stat-card purple"><div class="stat-label">Bounce Rate</div><div class="stat-value" id="ga-stat-bounce">—</div><div class="stat-change" id="blog-bounce-sub"></div></div>
+        <div class="stat-card teal"><div class="stat-label">Total Clicks</div><div class="stat-value" id="blog-stat-clicks">—</div><div class="stat-change" id="blog-clicks-sub"></div></div>
+        <div class="stat-card pink"><div class="stat-label">Button Hovers</div><div class="stat-value" id="blog-stat-hovers">—</div><div class="stat-change" id="blog-hovers-sub"></div></div>
       </div>
       <div class="grid-6040">
         <div class="panel mb-20">
-          <div class="panel-head"><span>📈</span><div class="panel-title">Traffic (Last 30 Days)</div></div>
+          <div class="panel-head"><span>📈</span><div class="panel-title">Traffic</div></div>
           <div class="panel-body"><div class="chart-container tall"><canvas id="webChart"></canvas></div></div>
         </div>
         <div>
@@ -1553,17 +1560,24 @@ body {
             <div class="panel-head"><span>🌐</span><div class="panel-title">Traffic Sources</div></div>
             <div class="panel-body"><div class="chart-container"><canvas id="sourceChart"></canvas></div></div>
           </div>
-          <div class="panel">
+          <div class="panel mb-20">
             <div class="panel-head"><span>📍</span><div class="panel-title">Top Pages</div></div>
             <div class="panel-body no-pad">
               <table class="data-table">
-                <thead><tr><th>Page</th><th>Views</th><th>Time</th></tr></thead>
-                <tbody>
-                  <tr><td class="bold">/blog/nac-guide-2026</td><td>1,240</td><td>4m 12s</td></tr>
-                  <tr><td class="bold">/home</td><td>980</td><td>2m 5s</td></tr>
-                  <tr><td class="bold">/blog/social-strategy</td><td>720</td><td>5m 30s</td></tr>
-                  <tr><td class="bold">/about</td><td>540</td><td>1m 48s</td></tr>
-                  <tr><td class="bold">/contact</td><td>312</td><td>1m 12s</td></tr>
+                <thead><tr><th>Page</th><th>Views</th><th>Clicks</th><th>Avg. Time</th></tr></thead>
+                <tbody id="blog-top-pages">
+                  <tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:20px;">Waiting for data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>🖱️</span><div class="panel-title">Recent Clicks</div></div>
+            <div class="panel-body no-pad">
+              <table class="data-table">
+                <thead><tr><th>Page</th><th>Element</th></tr></thead>
+                <tbody id="blog-recent-clicks">
+                  <tr><td colspan="2" style="text-align:center;color:var(--gray-400);padding:20px;">Waiting for data...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2007,10 +2021,10 @@ function initChartsForPage(page) {
     mkChart('webChart', {
       type: 'line',
       data: {
-        labels: DAYS30,
+        labels: [],
         datasets: [
-          { label: 'Page Views', data: randArr(30,200,600), borderColor: colors.primary, backgroundColor: colors.primary+'18', tension: 0.4, fill: true, borderWidth: 2 },
-          { label: 'Unique Visitors', data: randArr(30,80,280), borderColor: colors.orange, backgroundColor: colors.orange+'18', tension: 0.4, fill: true, borderWidth: 2 }
+          { label: 'Page Views', data: [], borderColor: colors.primary, backgroundColor: colors.primary+'18', tension: 0.4, fill: true, borderWidth: 2 },
+          { label: 'Visitors', data: [], borderColor: colors.orange, backgroundColor: colors.orange+'18', tension: 0.4, fill: true, borderWidth: 2 }
         ]
       },
       options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
@@ -2018,11 +2032,12 @@ function initChartsForPage(page) {
     mkChart('sourceChart', {
       type: 'pie',
       data: {
-        labels: ['Organic Search','Social','Direct','Referral','Email'],
-        datasets: [{ data: [38, 28, 18, 10, 6], backgroundColor: [colors.primary, colors.orange, '#22c55e', '#a855f7', '#14b8a6'], hoverOffset: 6 }]
+        labels: ['Direct'],
+        datasets: [{ data: [1], backgroundColor: [colors.primary, colors.orange, '#22c55e', '#a855f7', '#14b8a6', '#f59e0b', '#ef4444', '#6366f1'], hoverOffset: 6 }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 10 } } } } }
     });
+    fetchBlogStats();
   }
 
   if (page === 'facebook') {
@@ -2454,13 +2469,53 @@ function buildBarData(containerId, values) {
 }
 
 function buildTopPagesTable(pages) {
-  const tbody = document.querySelector('#analytics-page table tbody')
+  const tbody = document.getElementById('blog-top-pages')
   if (!tbody || !pages?.length) return
   tbody.innerHTML = pages.map(p => {
-    const mins = Math.floor(p.avg_duration / 60)
-    const secs = (p.avg_duration % 60).toString().padStart(2,'0')
-    return `<tr><td class="bold">${p.path}</td><td>${fmt(p.views)}</td><td>${mins}m ${secs}s</td></tr>`
+    const mins = Math.floor(p.avgTime / 60)
+    const secs = (p.avgTime % 60).toString().padStart(2,'0')
+    return `<tr><td class="bold">${p.path}</td><td>${fmt(p.views)}</td><td>${fmt(p.clicks)}</td><td>${mins}m ${secs}s</td></tr>`
   }).join('')
+}
+
+async function fetchBlogStats() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  if (!workerUrl) return
+  const days = document.getElementById('blog-days-select')?.value || '30'
+  try {
+    const res = await fetch(`${workerUrl}/api/blog/stats?days=${days}`)
+    const d = await res.json()
+    if (d.error) return
+
+    setStatVal('ga-stat-views', fmt(d.totalViews))
+    setStatVal('ga-stat-visitors', fmt(d.uniqueVisitors))
+    const avgSec = d.avgTimeOnPage || 0
+    setStatVal('ga-stat-session', `${Math.floor(avgSec/60)}m ${(avgSec%60).toString().padStart(2,'0')}s`)
+    setStatVal('ga-stat-bounce', d.bounceRate + '%')
+    setStatVal('blog-stat-clicks', fmt(d.totalClicks))
+    setStatVal('blog-stat-hovers', fmt(d.totalHovers))
+
+    if (d.topPages?.length) buildTopPagesTable(d.topPages)
+    if (d.referrers) updateSourceChart(d.referrers)
+
+    const clicksTbody = document.getElementById('blog-recent-clicks')
+    if (clicksTbody && d.recentClicks?.length) {
+      clicksTbody.innerHTML = d.recentClicks.slice(-15).reverse().map(c =>
+        `<tr><td class="bold">${c.p}</td><td>${c.t}</td></tr>`
+      ).join('')
+    }
+
+    // Update traffic chart
+    if (d.dailyViews?.length) {
+      const chart = chartInstances['webChart']
+      if (chart) {
+        chart.data.labels = d.dates || d.dailyViews.map((_,i) => `Day ${i+1}`)
+        chart.data.datasets[0].data = d.dailyViews
+        chart.data.datasets[1].data = d.dailyVisitors
+        chart.update()
+      }
+    }
+  } catch (e) { /* silently fail */ }
 }
 
 function updateSourceChart(sources) {
