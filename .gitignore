@@ -1,0 +1,11 @@
+# Memory files - never commit
+.claude/
+
+# Other local projects in this folder - separate repos
+NAC-PROPERTY-HUB.html
+NAC-RESIDENCE-INDEX.html
+Brochures html/
+
+# OS files
+.DS_Store
+Thumbs.db
