@@ -7,13 +7,6 @@ workers_dev     = true
 [vars]
 DASHBOARD_ORIGIN = "*"
 
-# ── KV Namespace for agent task storage ──
-# Create it first: wrangler kv namespace create NAC_AGENTS
-# Then paste the returned id below
-[[kv_namespaces]]
-binding = "NAC_AGENTS"
-id      = "PASTE_YOUR_KV_ID_HERE"
-
 # ── Secrets — set these via CLI, never commit them ──
 # Run once per secret:
 #
