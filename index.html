@@ -1214,6 +1214,72 @@ body {
 
     <!-- ═══════════════ AGENTS PAGE ═══════════════ -->
     <div id="agents-page" class="page">
+
+      <!-- Run Task Panel -->
+      <div class="panel mb-20" id="run-task-panel">
+        <div class="panel-head">
+          <span>⚡</span>
+          <div class="panel-title">Run Agent Task</div>
+          <span id="agent-api-status" style="font-size:11px;margin-left:auto;"></span>
+        </div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Select Agent</label>
+              <select class="form-select" id="run-agent-select">
+                <option value="content">✍️ Content Agent</option>
+                <option value="social">📱 Social Agent</option>
+                <option value="data">📊 Data Agent</option>
+                <option value="web">🌐 Web Agent</option>
+                <option value="research">🔍 Research Agent</option>
+                <option value="design">🎨 Design Agent</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Context (optional)</label>
+              <input class="form-input" id="run-agent-context" placeholder="e.g. targeting Philippine market, luxury segment">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task</label>
+            <textarea class="form-textarea" id="run-agent-task" placeholder="Describe what you want this agent to do…" style="min-height:70px;"></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="btn btn-orange" id="run-agent-btn" onclick="runAgentTask()">▶ Run Task</button>
+            <span id="run-agent-status" style="font-size:12px;color:var(--gray-400);"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Output -->
+      <div class="panel mb-20" id="agent-output-panel" style="display:none;">
+        <div class="panel-head">
+          <span id="output-agent-emoji">🤖</span>
+          <div class="panel-title" id="output-agent-name">Agent Output</div>
+          <span id="output-status-badge" class="agent-status-badge badge-busy" style="margin-left:auto;">Running…</span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="closeOutput()">✕</button>
+        </div>
+        <div class="panel-body">
+          <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px;" id="output-task-label"></div>
+          <div id="agent-output-text" style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--gray-900);background:var(--gray-50);border-radius:8px;padding:14px;min-height:80px;max-height:400px;overflow-y:auto;"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;" id="output-actions"></div>
+        </div>
+      </div>
+
+      <!-- Task History -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>📋</span>
+          <div class="panel-title">Task History</div>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadTaskHistory()">↻ Refresh</button>
+        </div>
+        <div class="panel-body no-pad" id="task-history-body">
+          <div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">
+            Connect Worker + ANTHROPIC_API_KEY to see task history.
+          </div>
+        </div>
+      </div>
+
       <div class="section-title">Active Agents (3)</div>
       <div class="agents-grid" id="agents-grid"></div>
       <div class="section-title" style="margin-top:24px;">All Agents</div>
@@ -1623,7 +1689,7 @@ function initChartsForPage(page) {
   }
 
   if (page === 'articles') buildArticlesTable();
-  if (page === 'agents') buildAgents();
+  if (page === 'agents') { buildAgents(); loadTaskHistory(); }
   if (page === 'tasks') renderTasks();
 }
 
@@ -2109,6 +2175,180 @@ function initSettingsPage() {
 // ═══════════════════════════════════════════════════
 function updateActiveBadge() {
   document.getElementById('active-badge').textContent = AGENTS.filter(a=>a.status!=='idle').length;
+}
+
+// ═══════════════════════════════════════════════════
+//  AGENT CONTROL — Claude API
+// ═══════════════════════════════════════════════════
+let currentTaskId = null
+
+async function runAgentTask() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  if (!workerUrl) {
+    alert('Set your Worker URL in ⚙️ API Settings first.')
+    return
+  }
+
+  const agentId = document.getElementById('run-agent-select').value
+  const task    = document.getElementById('run-agent-task').value.trim()
+  const context = document.getElementById('run-agent-context').value.trim()
+
+  if (!task) {
+    document.getElementById('run-agent-task').focus()
+    return
+  }
+
+  // Show output panel
+  const agentLabels = {
+    content:'✍️ Content Agent', social:'📱 Social Agent', data:'📊 Data Agent',
+    web:'🌐 Web Agent', research:'🔍 Research Agent', design:'🎨 Design Agent'
+  }
+  const [emoji, ...nameParts] = agentLabels[agentId].split(' ')
+  document.getElementById('output-agent-emoji').textContent  = emoji
+  document.getElementById('output-agent-name').textContent   = nameParts.join(' ')
+  document.getElementById('output-task-label').textContent   = `Task: ${task}`
+  document.getElementById('output-status-badge').textContent = 'Running…'
+  document.getElementById('output-status-badge').className   = 'agent-status-badge badge-busy'
+  document.getElementById('agent-output-text').textContent   = ''
+  document.getElementById('output-actions').innerHTML        = ''
+  document.getElementById('agent-output-panel').style.display = 'block'
+  document.getElementById('agent-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  // Disable button
+  const btn = document.getElementById('run-agent-btn')
+  btn.disabled   = true
+  btn.textContent = '⏳ Running…'
+  document.getElementById('run-agent-status').textContent = 'Sending task to Claude…'
+
+  try {
+    const res = await fetch(`${workerUrl}/api/agents/run`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ agentId, task, context }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`)
+
+    currentTaskId = data.id
+    document.getElementById('agent-output-text').textContent   = data.output
+    document.getElementById('output-status-badge').textContent = data.status === 'done' ? '✓ Done' : '✗ Error'
+    document.getElementById('output-status-badge').className   = `agent-status-badge ${data.status === 'done' ? 'badge-active' : 'badge-error'}`
+    document.getElementById('run-agent-status').textContent    = data.tokens
+      ? `Used ${data.tokens.input + data.tokens.output} tokens`
+      : ''
+
+    // Action buttons
+    document.getElementById('output-actions').innerHTML = `
+      <button class="btn btn-primary btn-sm" onclick="copyOutput()">📋 Copy Output</button>
+      <button class="btn btn-ghost btn-sm" onclick="sendToTask('${agentId}','${task.replace(/'/g,"\\'")}')">+ Add to Task Board</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadTaskHistory()">View History</button>
+    `
+
+    // Refresh history
+    loadTaskHistory()
+
+  } catch (e) {
+    document.getElementById('agent-output-text').textContent   = `Error: ${e.message}`
+    document.getElementById('output-status-badge').textContent = '✗ Error'
+    document.getElementById('output-status-badge').className   = 'agent-status-badge badge-error'
+    document.getElementById('run-agent-status').textContent    = ''
+  } finally {
+    btn.disabled    = false
+    btn.textContent = '▶ Run Task'
+  }
+}
+
+function closeOutput() {
+  document.getElementById('agent-output-panel').style.display = 'none'
+}
+
+function copyOutput() {
+  const text = document.getElementById('agent-output-text').textContent
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target
+    btn.textContent = '✓ Copied!'
+    setTimeout(() => btn.textContent = '📋 Copy Output', 1500)
+  })
+}
+
+function sendToTask(agentId, task) {
+  const agentMap = { content:'CA', social:'SA', data:'DA', web:'WA', research:'RE', design:'DG' }
+  const tagMap   = { content:'content', social:'fb', data:'agent', web:'web', research:'agent', design:'ig' }
+  openAddTask('todo', agentMap[agentId] || '')
+  setTimeout(() => {
+    document.getElementById('task-title').value = task.slice(0, 80)
+    document.getElementById('task-tag').value   = tagMap[agentId] || 'agent'
+  }, 50)
+}
+
+async function loadTaskHistory() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  const el = document.getElementById('task-history-body')
+  if (!workerUrl) return
+
+  el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">Loading…</div>'
+
+  try {
+    const res  = await fetch(`${workerUrl}/api/agents/list`)
+    const data = await res.json()
+
+    if (!data.configured) {
+      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">Connect ANTHROPIC_API_KEY in Cloudflare to enable agent history.</div>'
+      return
+    }
+
+    if (!data.tasks?.length) {
+      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">No tasks yet — run your first agent task above.</div>'
+      return
+    }
+
+    el.innerHTML = `<table class="data-table">
+      <thead><tr><th>Agent</th><th>Task</th><th>Status</th><th>Time</th><th></th></tr></thead>
+      <tbody>${data.tasks.map(t => `
+        <tr>
+          <td>${t.agentEmoji} ${t.agentName}</td>
+          <td class="bold" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.task}</td>
+          <td><span class="agent-status-badge ${t.status === 'done' ? 'badge-active' : t.status === 'running' ? 'badge-busy' : 'badge-error'}" style="font-size:10px;">${t.status}</span></td>
+          <td style="white-space:nowrap;font-size:11px;">${timeAgo(t.created)}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="viewHistoryTask('${t.id}')">View</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`
+  } catch (e) {
+    el.innerHTML = `<div style="padding:16px;font-size:12px;color:#ef4444;">Could not load history: ${e.message}</div>`
+  }
+}
+
+async function viewHistoryTask(taskId) {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  try {
+    const res  = await fetch(`${workerUrl}/api/agents/task/${taskId}`)
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+
+    const [emoji, ...nameParts] = (data.agentEmoji + ' ' + data.agentName).split(' ')
+    document.getElementById('output-agent-emoji').textContent  = emoji
+    document.getElementById('output-agent-name').textContent   = nameParts.join(' ')
+    document.getElementById('output-task-label').textContent   = `Task: ${data.task}`
+    document.getElementById('output-status-badge').textContent = data.status === 'done' ? '✓ Done' : data.status
+    document.getElementById('output-status-badge').className   = `agent-status-badge ${data.status === 'done' ? 'badge-active' : 'badge-error'}`
+    document.getElementById('agent-output-text').textContent   = data.output
+    document.getElementById('output-actions').innerHTML        = `<button class="btn btn-primary btn-sm" onclick="copyOutput()">📋 Copy Output</button>`
+    document.getElementById('agent-output-panel').style.display = 'block'
+    document.getElementById('agent-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  } catch (e) {
+    alert(`Could not load task: ${e.message}`)
+  }
+}
+
+function timeAgo(iso) {
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 60)   return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
+  return `${Math.floor(diff/86400)}d ago`
 }
 
 function refreshAll() {
