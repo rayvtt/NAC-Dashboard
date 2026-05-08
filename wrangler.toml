@@ -1,0 +1,61 @@
+name            = "nac-dashboard"
+main            = "worker.js"
+compatibility_date = "2024-09-23"
+workers_dev     = true
+
+# ── Non-secret config ──
+[vars]
+DASHBOARD_ORIGIN = "*"
+
+# ── KV Namespace for agent task storage ──
+# Create it first: wrangler kv namespace create NAC_AGENTS
+# Then paste the returned id below
+[[kv_namespaces]]
+binding = "NAC_AGENTS"
+id      = "PASTE_YOUR_KV_ID_HERE"
+
+# ── Secrets — set these via CLI, never commit them ──
+# Run once per secret:
+#
+#   wrangler secret put FB_PAGE_ACCESS_TOKEN
+#   wrangler secret put FB_PAGE_ID
+#   wrangler secret put IG_USER_ID
+#   wrangler secret put TIKTOK_ACCESS_TOKEN
+#   wrangler secret put GA4_PROPERTY_ID
+#   wrangler secret put GA4_CLIENT_EMAIL
+#   wrangler secret put GA4_PRIVATE_KEY
+#
+# ── Where to get each secret ──
+#
+#  FB_PAGE_ACCESS_TOKEN:
+#    Meta Business Suite → Settings → Page Access Tokens
+#    OR: graph.facebook.com/oauth/access_token (long-lived token exchange)
+#    Scope needed: pages_show_list, pages_read_engagement, read_insights
+#
+#  FB_PAGE_ID:
+#    Open your Facebook Page → About → Page transparency → Page ID
+#    OR: graph.facebook.com/me/accounts?access_token=USER_TOKEN
+#
+#  IG_USER_ID:
+#    graph.facebook.com/{fb-page-id}?fields=instagram_business_account&access_token={token}
+#    Returns: { "instagram_business_account": { "id": "NUMERIC_ID" } }
+#
+#  TIKTOK_ACCESS_TOKEN:
+#    TikTok Developer Portal → apps.tiktok.com → Create App
+#    Scopes: user.info.basic, video.list
+#    Complete OAuth flow → copy long-lived access token
+#
+#  GA4_PROPERTY_ID:
+#    analytics.google.com → Admin → Property → Property Settings → Property ID (numeric)
+#
+#  GA4_CLIENT_EMAIL + GA4_PRIVATE_KEY:
+#    Google Cloud Console → IAM → Service Accounts → Create Service Account
+#    Role: "Viewer" → Keys → Add Key → JSON
+#    From the JSON file:  client_email → GA4_CLIENT_EMAIL
+#                        private_key  → GA4_PRIVATE_KEY  (paste entire PEM including \n)
+#    Also: GA4 Admin → Property Access Management → add service account email as Viewer
+
+# ── Routes (optional — add if you have a custom domain) ──
+# [[routes]]
+# pattern = "api.yourdomain.com/*"
+# zone_name = "yourdomain.com"
