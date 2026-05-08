@@ -1995,6 +1995,58 @@ body {
             </div>
           </div>
 
+          <!-- Notion CRM fields -->
+          <div style="border-top:1px solid var(--gray-200);margin:4px 0 16px;padding-top:16px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gray-400);font-weight:600;margin-bottom:12px;">
+              📋 Notion CRM Fields
+            </div>
+            <div class="leadgen-form-grid-3">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Chương trình quan tâm</label>
+                <select class="form-select" id="lg-program" multiple size="3" style="height:auto;min-height:72px;">
+                  <option value="🇰🇳 St. Kitts &amp; Nevis">🇰🇳 St. Kitts &amp; Nevis</option>
+                  <option value="🇬🇩 Grenada">🇬🇩 Grenada</option>
+                  <option value="🇹🇷 Thổ Nhĩ Kỳ">🇹🇷 Thổ Nhĩ Kỳ</option>
+                  <option value="🇬🇷 Hy Lạp">🇬🇷 Hy Lạp</option>
+                  <option value="🇵🇹 Bồ Đào Nha">🇵🇹 Bồ Đào Nha</option>
+                  <option value="🇦🇪 Dubai UAE">🇦🇪 Dubai UAE</option>
+                  <option value="🇹🇭 Thái Lan">🇹🇭 Thái Lan</option>
+                  <option value="🇲🇾 Malaysia">🇲🇾 Malaysia</option>
+                  <option value="🇭🇺 Hungary">🇭🇺 Hungary</option>
+                  <option value="🇬🇧 Vương quốc Anh">🇬🇧 Vương quốc Anh</option>
+                  <option value="🔍 Chưa xác định">🔍 Chưa xác định</option>
+                </select>
+                <div style="font-size:10px;color:var(--gray-400);margin-top:3px;">Ctrl/Cmd + click để chọn nhiều</div>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Ngân sách (USD)</label>
+                <input class="form-input" id="lg-budget" type="number" placeholder="50000">
+                <label class="form-label" style="margin-top:10px;">Nguồn lead</label>
+                <select class="form-select" id="lg-source">
+                  <option value="📧 Email NAC">📧 Email NAC</option>
+                  <option value="💬 WhatsApp">💬 WhatsApp</option>
+                  <option value="🤖 Chatbot">🤖 Chatbot</option>
+                  <option value="📋 Form website">📋 Form website</option>
+                  <option value="Lấy Brochures">Lấy Brochures</option>
+                  <option value="Quiz">Quiz</option>
+                  <option value="📊 Residence Index">📊 Residence Index</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Timeline</label>
+                <input class="form-input" id="lg-timeline" placeholder="VD: 6-12 tháng, Q3 2026...">
+                <label class="form-label" style="margin-top:10px;">Status Notion</label>
+                <select class="form-select" id="lg-notion-status">
+                  <option value="🆕 Mới">🆕 Mới</option>
+                  <option value="📞 Đã liên hệ">📞 Đã liên hệ</option>
+                  <option value="🔥 Tiềm năng">🔥 Tiềm năng</option>
+                  <option value="✅ Chốt được">✅ Chốt được</option>
+                  <option value="❌ Không quan tâm">❌ Không quan tâm</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <!-- Tone selector -->
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label">Giọng văn</label>
@@ -2948,6 +3000,8 @@ const SECRETS_LIST = [
   { name:'GA4_PROPERTY_ID',      label:'GA4 Property ID (numeric)',   platform:'analytics', hint:'Google Analytics → Admin → Property → Property Settings → Property ID' },
   { name:'GA4_CLIENT_EMAIL',     label:'GA4 Service Account Email',   platform:'analytics', hint:'Google Cloud → IAM → Service Accounts → create account → copy client_email from JSON key' },
   { name:'GA4_PRIVATE_KEY',      label:'GA4 Private Key (PEM)',       platform:'analytics', hint:'Same JSON key → copy private_key value (full PEM with \\n). Then: wrangler secret put GA4_PRIVATE_KEY' },
+  { name:'ANTHROPIC_API_KEY',   label:'Anthropic API Key (AI Agents)', platform:'agents',   hint:'console.anthropic.com → API Keys → Create Key' },
+  { name:'NOTION_API_TOKEN',    label:'Notion Integration Token (Lead CRM)', platform:'notion', hint:'notion.so/my-integrations → New integration → copy token. Then share the NAC Lead CRM database with the integration.' },
 ]
 
 function buildSecretsGuide() {
@@ -3008,6 +3062,8 @@ function renderStatusPanel(status) {
     { key:'threads',   label:'Threads',   icon:'🧵' },
     { key:'tiktok',    label:'TikTok',    icon:'🎵' },
     { key:'analytics', label:'GA4 Analytics', icon:'📊' },
+    { key:'agents',    label:'Anthropic (AI Agents)', icon:'🤖' },
+    { key:'notion',    label:'Notion (Lead CRM)', icon:'📋' },
   ]
   const connCount = Object.values(status).filter(Boolean).length
   document.getElementById('settings-badge').style.display = connCount < items.length ? 'inline' : 'none'
@@ -3384,12 +3440,17 @@ function switchLeadTab(tab) {
 }
 
 function clearLeadForm() {
-  ;['lg-linkedin','lg-name','lg-title','lg-company','lg-email','lg-phone','lg-brochure','lg-notes'].forEach(id => {
+  ;['lg-linkedin','lg-name','lg-title','lg-company','lg-email','lg-phone',
+    'lg-brochure','lg-notes','lg-budget','lg-timeline'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.value = ''
   })
-  const ind = document.getElementById('lg-industry')
-  if (ind) ind.value = ''
+  ;['lg-industry','lg-source','lg-notion-status'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = el.options?.[0]?.value || ''
+  })
+  const prog = document.getElementById('lg-program')
+  if (prog) Array.from(prog.options).forEach(o => { o.selected = false })
   document.querySelectorAll('.tone-btn').forEach((b,i) => b.classList.toggle('active', i===0))
   document.getElementById('lg-status').textContent = ''
 }
@@ -3415,6 +3476,9 @@ async function generateLeadOutreach() {
 
   const tone = document.querySelector('.tone-btn.active')?.dataset.tone || 'professional'
 
+  const progEl = document.getElementById('lg-program')
+  const selectedPrograms = progEl ? Array.from(progEl.selectedOptions).map(o => o.value) : []
+
   const payload = {
     linkedinUrl: document.getElementById('lg-linkedin').value.trim(),
     name,
@@ -3425,6 +3489,12 @@ async function generateLeadOutreach() {
     phone:      document.getElementById('lg-phone').value.trim(),
     brochureUrl: document.getElementById('lg-brochure').value.trim(),
     notes:      document.getElementById('lg-notes').value.trim(),
+    // Notion CRM fields
+    program:    selectedPrograms,
+    budget:     document.getElementById('lg-budget').value.trim(),
+    source:     document.getElementById('lg-source').value,
+    timeline:   document.getElementById('lg-timeline').value.trim(),
+    notionStatus: document.getElementById('lg-notion-status').value,
     tone,
   }
 
@@ -3480,81 +3550,161 @@ async function saveCurrentLead() {
   if (!_leadgenCurrentData) return
   const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
   if (!workerUrl) return
+
+  const btn = event.currentTarget
+  btn.disabled = true
+  btn.textContent = '⏳ Đang lưu...'
+
+  const d    = _leadgenCurrentData
+  const info = d.leadInfo || {}
+
+  const notionPayload = {
+    name:       info.name,
+    email:      info.email,
+    phone:      info.phone,
+    company:    info.company,
+    title:      info.title,
+    linkedinUrl: info.linkedinUrl,
+    notes:      info.notes,
+    program:    info.program  || [],
+    budget:     info.budget,
+    source:     info.source   || '📧 Email NAC',
+    timeline:   info.timeline,
+    status:     info.notionStatus || '🆕 Mới',
+    aiSubject:  d.subject,
+    aiEmail:    d.email,
+    aiZalo:     d.zalo,
+    aiWhatsapp: d.whatsapp,
+  }
+
   try {
-    const res  = await fetch(`${workerUrl}/api/leads/save`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        ..._leadgenCurrentData.leadInfo,
-        subject:   _leadgenCurrentData.subject,
-        email:     _leadgenCurrentData.email,
-        zalo:      _leadgenCurrentData.zalo,
-        whatsapp:  _leadgenCurrentData.whatsapp,
-        summary:   _leadgenCurrentData.summary,
-        status:    'new',
-        generated: _leadgenCurrentData.generated,
-      }),
+    // Primary: save to Notion
+    const notionRes  = await fetch(`${workerUrl}/api/notion/leads`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(notionPayload),
     })
-    const data = await res.json()
-    if (data.saved) {
-      const btn = event.currentTarget
-      btn.textContent = '✅ Đã lưu!'
-      setTimeout(() => { btn.textContent = '💾 Lưu Lead' }, 2000)
+    const notionData = await notionRes.json()
+
+    // Backup: save to KV as well
+    fetch(`${workerUrl}/api/leads/save`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...notionPayload, subject: d.subject,
+        zalo: d.zalo, whatsapp: d.whatsapp, summary: d.summary, generated: d.generated }),
+    }).catch(() => {})
+
+    if (notionData.created) {
+      btn.textContent = '✅ Đã lưu Notion!'
+      setTimeout(() => { btn.textContent = '💾 Lưu Lead'; btn.disabled = false }, 2500)
       loadLeads()
+    } else {
+      throw new Error(notionData.error || 'Lỗi không xác định')
     }
   } catch (e) {
-    console.error('Save lead error:', e)
+    btn.textContent = `❌ ${e.message.slice(0, 30)}`
+    btn.disabled = false
+    setTimeout(() => { btn.textContent = '💾 Lưu Lead' }, 3000)
   }
 }
 
 async function loadLeads() {
   const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
-  const body = document.getElementById('lg-leads-body')
-  if (!body) return
+  const bodyEl    = document.getElementById('lg-leads-body')
+  if (!bodyEl) return
   if (!workerUrl) {
-    body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Cần cấu hình Worker URL để lưu leads.</div>'
+    bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Cần cấu hình Worker URL.</div>'
     return
   }
+
+  bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Đang tải từ Notion...</div>'
+
   try {
-    const res  = await fetch(`${workerUrl}/api/leads/list`)
+    // Primary: Notion
+    const res  = await fetch(`${workerUrl}/api/notion/leads`)
     const data = await res.json()
-    renderLeadTable(data.leads || [])
+
+    if (data.configured && data.leads) {
+      renderLeadTable(data.leads, 'notion')
+      const badge = document.getElementById('lg-lead-count')
+      if (badge) badge.innerHTML = `${data.leads.length} leads &nbsp;<span style="font-size:10px;background:#e8f5e9;color:#2e7d32;padding:1px 7px;border-radius:10px;font-weight:700;">✅ Notion</span>`
+    } else {
+      // Fallback: KV
+      const kvRes  = await fetch(`${workerUrl}/api/leads/list`)
+      const kvData = await kvRes.json()
+      renderLeadTable(kvData.leads || [], 'kv')
+      const badge = document.getElementById('lg-lead-count')
+      if (badge) badge.innerHTML = `${(kvData.leads||[]).length} leads &nbsp;<span style="font-size:10px;background:#fff3e0;color:#e65100;padding:1px 7px;border-radius:10px;font-weight:700;">KV cache</span>`
+    }
   } catch (e) {
-    body.innerHTML = `<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Không tải được leads: ${e.message}</div>`
+    bodyEl.innerHTML = `<div style="padding:20px;text-align:center;font-size:12px;color:#ef4444;">❌ ${e.message}</div>`
   }
 }
 
-function renderLeadTable(leads) {
-  const body = document.getElementById('lg-leads-body')
-  const count = document.getElementById('lg-lead-count')
-  if (count) count.textContent = `${leads.length} lead${leads.length !== 1 ? 's' : ''}`
+const NOTION_STATUS_COLORS = {
+  '🆕 Mới':             { bg:'#dbeafe', color:'#1d4ed8' },
+  'Mới':                { bg:'#dbeafe', color:'#1d4ed8' },
+  '📞 Đã liên hệ':      { bg:'#fef9c3', color:'#854d0e' },
+  '🔥 Tiềm năng':       { bg:'#fff7ed', color:'#c2410c' },
+  '✅ Chốt được':       { bg:'#dcfce7', color:'#166534' },
+  '❌ Không quan tâm':  { bg:'#fee2e2', color:'#991b1b' },
+}
+
+function statusBadge(status) {
+  const c = NOTION_STATUS_COLORS[status] || { bg:'#f3f4f6', color:'#374151' }
+  return `<span class="lead-status-badge" style="background:${c.bg};color:${c.color};">${escH(status||'Mới')}</span>`
+}
+
+function renderLeadTable(leads, source) {
+  const bodyEl = document.getElementById('lg-leads-body')
   if (!leads.length) {
-    body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">Chưa có lead nào được lưu.</div>'
+    bodyEl.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">Chưa có lead nào được lưu.</div>'
     return
   }
-  body.innerHTML = `
+
+  const isNotion = source === 'notion'
+  bodyEl.innerHTML = `
     <div style="overflow-x:auto;">
     <table class="lead-table">
       <thead>
         <tr>
-          <th>Họ tên</th><th>Chức vụ</th><th>Công ty</th><th>Ngành</th>
-          <th>Email</th><th>Điện thoại</th><th>Trạng thái</th><th>Ngày lưu</th><th></th>
+          <th>Họ tên</th>
+          <th>Email</th>
+          <th>Điện thoại</th>
+          <th>Chương trình</th>
+          <th>Ngân sách</th>
+          <th>Nguồn</th>
+          <th>Status</th>
+          <th>Ngày</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         ${leads.map(l => `
           <tr>
-            <td><strong>${escH(l.name||'')}</strong></td>
-            <td>${escH(l.title||'')}</td>
-            <td>${escH(l.company||'')}</td>
-            <td>${escH(l.industry||'')}</td>
+            <td>
+              <div style="font-weight:600;">${escH(l.name||'')}</div>
+              ${l.notes ? `<div style="font-size:10px;color:var(--gray-400);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(l.notes)}">${escH((l.notes||'').split('\n')[0])}</div>` : ''}
+            </td>
             <td><a href="mailto:${escH(l.email||'')}" style="color:var(--primary)">${escH(l.email||'—')}</a></td>
             <td>${escH(l.phone||'—')}</td>
-            <td><span class="lead-status-badge lead-status-${l.status||'new'}">${l.status||'new'}</span></td>
-            <td style="color:var(--gray-400);font-size:11px;">${l.savedAt ? relativeTime(l.savedAt) : '—'}</td>
+            <td style="max-width:130px;">
+              ${(l.program||[]).slice(0,2).map(p=>`<span style="display:inline-block;font-size:10px;background:var(--primary-faint);color:var(--primary-dark);padding:1px 6px;border-radius:8px;margin:1px;">${escH(p)}</span>`).join('')}
+              ${(l.program||[]).length>2 ? `<span style="font-size:10px;color:var(--gray-400);">+${l.program.length-2}</span>` : ''}
+            </td>
+            <td style="font-family:var(--mono);font-size:12px;">${l.budget ? '$'+Number(l.budget).toLocaleString() : '—'}</td>
+            <td style="font-size:11px;color:var(--gray-600);">${escH(l.source||'—')}</td>
             <td>
-              <button class="btn btn-ghost btn-sm" onclick="viewLeadContent('${l.id}')" title="Xem nội dung">👁</button>
-              <button class="btn btn-ghost btn-sm" onclick="deleteLeadConfirm('${l.id}')" style="color:#ef4444;" title="Xóa">🗑</button>
+              ${isNotion
+                ? `<select class="form-select" style="padding:3px 6px;font-size:11px;min-width:130px;" onchange="updateLeadStatus('${escH(l.id)}', this.value)">
+                    ${Object.keys(NOTION_STATUS_COLORS).filter(s=>s!=='Mới').map(s=>
+                      `<option value="${escH(s)}" ${l.status===s?'selected':''}>${escH(s)}</option>`
+                    ).join('')}
+                   </select>`
+                : statusBadge(l.status)}
+            </td>
+            <td style="color:var(--gray-400);font-size:11px;">${l.savedAt ? relativeTime(l.savedAt) : l.date || '—'}</td>
+            <td style="white-space:nowrap;">
+              ${isNotion && l.notionUrl ? `<a href="${escH(l.notionUrl)}" target="_blank" class="btn btn-ghost btn-sm" title="Mở Notion" style="text-decoration:none;">📋</a>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="viewNotionLeadContent(${JSON.stringify(JSON.stringify(l))})" title="Xem outreach">👁</button>
             </td>
           </tr>`).join('')}
       </tbody>
@@ -3566,41 +3716,49 @@ function escH(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
-async function deleteLeadConfirm(id) {
-  if (!confirm('Xóa lead này?')) return
+async function updateLeadStatus(pageId, status) {
   const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
   if (!workerUrl) return
-  await fetch(`${workerUrl}/api/leads/${id}`, { method: 'DELETE' })
-  loadLeads()
+  try {
+    await fetch(`${workerUrl}/api/notion/leads/${pageId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+  } catch (e) {
+    console.error('Update status error:', e)
+  }
 }
 
-function viewLeadContent(id) {
-  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
-  if (!workerUrl) return
-  fetch(`${workerUrl}/api/leads/list`)
-    .then(r => r.json())
-    .then(data => {
-      const lead = (data.leads||[]).find(l => l.id === id)
-      if (!lead) return
-      _leadgenCurrentData = {
-        subject: lead.subject, email: lead.email, zalo: lead.zalo,
-        whatsapp: lead.whatsapp, summary: lead.summary,
-        leadInfo: { name: lead.name, title: lead.title, company: lead.company,
-          industry: lead.industry, email: lead.email, phone: lead.phone,
-          brochureUrl: lead.brochureUrl, linkedinUrl: lead.linkedinUrl }
-      }
-      document.getElementById('lg-output-name').textContent = `Outreach cho ${lead.name||''}${lead.company?' — '+lead.company:''}`
-      document.getElementById('lg-summary').textContent = lead.summary || ''
-      document.getElementById('lg-subject-text').textContent = lead.subject || ''
-      document.getElementById('lg-subject-box').style.display = 'block'
-      document.getElementById('lg-output-email').textContent = lead.email || ''
-      document.getElementById('lg-output-zalo').textContent  = lead.zalo  || ''
-      document.getElementById('lg-output-whatsapp').textContent = lead.whatsapp || ''
-      document.getElementById('lg-token-info').textContent = ''
-      switchLeadTab('email')
-      document.getElementById('lg-output-panel').style.display = 'block'
-      document.getElementById('lg-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+function viewNotionLeadContent(leadJson) {
+  const lead = JSON.parse(leadJson)
+  // Parse AI content from notes field (stored as [Email]\n...[Zalo]\n...[WhatsApp]\n...)
+  const notes = lead.notes || ''
+  const extractSection = (label, text) => {
+    const re = new RegExp(`\\[${label}\\]\\n([\\s\\S]*?)(?=\\n\\[|$)`)
+    return (text.match(re) || [])[1]?.trim() || ''
+  }
+  const aiEmail    = extractSection('Email', notes)
+  const aiZalo     = extractSection('Zalo', notes)
+  const aiWhatsapp = extractSection('WhatsApp', notes)
+  const aiSubject  = (notes.match(/\[Subject\] (.+)/) || [])[1]?.trim() || ''
+
+  _leadgenCurrentData = {
+    subject: aiSubject, email: aiEmail, zalo: aiZalo, whatsapp: aiWhatsapp,
+    summary: `${lead.name||''} · ${(lead.program||[]).join(', ')}`,
+    leadInfo: { name: lead.name, email: lead.email, phone: lead.phone,
+      brochureUrl: '', linkedinUrl: '', program: lead.program, budget: lead.budget }
+  }
+  document.getElementById('lg-output-name').textContent = `Outreach cho ${lead.name||''}`
+  document.getElementById('lg-summary').textContent = _leadgenCurrentData.summary
+  document.getElementById('lg-subject-text').textContent = aiSubject
+  document.getElementById('lg-subject-box').style.display = aiSubject ? 'block' : 'none'
+  document.getElementById('lg-output-email').textContent = aiEmail || notes
+  document.getElementById('lg-output-zalo').textContent  = aiZalo
+  document.getElementById('lg-output-whatsapp').textContent = aiWhatsapp
+  document.getElementById('lg-token-info').textContent = ''
+  switchLeadTab('email')
+  document.getElementById('lg-output-panel').style.display = 'block'
+  document.getElementById('lg-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // ── PDF Export ────────────────────────────────────────────────────────────────

@@ -30,6 +30,9 @@ const TIKTOK       = 'https://open.tiktokapis.com/v2'
 const GA4          = 'https://analyticsdata.googleapis.com/v1beta'
 const ANTHROPIC    = 'https://api.anthropic.com/v1/messages'
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
+const NOTION_API   = 'https://api.notion.com/v1'
+const NOTION_DB_ID = '2fe48ec2-5e86-80ef-a3a3-fb8113cf6657'
+const NOTION_VER   = '2022-06-28'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -175,6 +178,14 @@ export default {
       if (pathname.startsWith('/api/leads/') && request.method === 'DELETE') {
         const id = pathname.split('/').pop()
         return json(await deleteLead(id, env))
+      }
+
+      // ── Notion CRM ──
+      if (pathname === '/api/notion/leads'     && request.method === 'POST')  return json(await notionCreateLead(request, env))
+      if (pathname === '/api/notion/leads')                                    return json(await notionListLeads(env))
+      if (pathname.startsWith('/api/notion/leads/') && request.method === 'PATCH') {
+        const pageId = pathname.split('/').pop()
+        return json(await notionUpdateLead(pageId, request, env))
       }
 
       return json({ error: 'Not found' }, 404)
@@ -412,6 +423,126 @@ async function deleteLead(id, env) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  NOTION CRM
+// ─────────────────────────────────────────────────────────────────────────────
+
+function notionHeaders(env) {
+  return {
+    'Authorization': `Bearer ${env.NOTION_API_TOKEN}`,
+    'Content-Type':  'application/json',
+    'Notion-Version': NOTION_VER,
+  }
+}
+
+async function notionCreateLead(request, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const b = await request.json()
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Build Ghi chú from company/title/AI content
+  let noteText = ''
+  if (b.company)    noteText += `Công ty: ${b.company}\n`
+  if (b.title)      noteText += `Chức vụ: ${b.title}\n`
+  if (b.linkedinUrl) noteText += `LinkedIn: ${b.linkedinUrl}\n`
+  if (b.notes)      noteText += `\nGhi chú: ${b.notes}\n`
+  if (b.aiSubject)  noteText += `\n[Subject] ${b.aiSubject}\n`
+  if (b.aiEmail)    noteText += `\n[Email]\n${b.aiEmail}\n`
+  if (b.aiZalo)     noteText += `\n[Zalo]\n${b.aiZalo}\n`
+  if (b.aiWhatsapp) noteText += `\n[WhatsApp]\n${b.aiWhatsapp}\n`
+
+  const props = {
+    'Tên khách hàng': { title: [{ text: { content: b.name || '' } }] },
+    'Ngày liên hệ':   { date:  { start: today } },
+    'Status':         { select: { name: b.status || '🆕 Mới' } },
+    'Nguồn lead':     { select: { name: b.source || '📧 Email NAC' } },
+  }
+
+  if (b.email)    props['Email']           = { email: b.email }
+  if (b.phone)    props['Số điện thoại']   = { phone_number: b.phone }
+  if (noteText)   props['Ghi chú']         = { rich_text: [{ text: { content: noteText.slice(0, 1999) } }] }
+  if (b.budget)   props['Ngân sách (USD)'] = { number: parseFloat(b.budget) || null }
+  if (b.timeline) props['Timeline']        = { rich_text: [{ text: { content: b.timeline } }] }
+
+  if (Array.isArray(b.program) && b.program.length) {
+    props['Chương trình quan tâm'] = { multi_select: b.program.map(p => ({ name: p })) }
+  }
+  if (Array.isArray(b.region) && b.region.length) {
+    props['Region'] = { multi_select: b.region.map(r => ({ name: r })) }
+  }
+
+  const res  = await fetch(`${NOTION_API}/pages`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ parent: { database_id: NOTION_DB_ID }, properties: props }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+  return { created: true, id: data.id, url: data.url }
+}
+
+async function notionListLeads(env) {
+  if (!env.NOTION_API_TOKEN) return { leads: [], configured: false }
+
+  const res  = await fetch(`${NOTION_API}/databases/${NOTION_DB_ID}/query`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({
+      sorts: [{ property: 'Ngày liên hệ', direction: 'descending' }],
+      page_size: 100,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+
+  const leads = (data.results || []).map(page => {
+    const p = page.properties
+    return {
+      id:         page.id,
+      notionUrl:  page.url,
+      name:       p['Tên khách hàng']?.title?.[0]?.text?.content || '',
+      email:      p['Email']?.email || '',
+      phone:      p['Số điện thoại']?.phone_number || '',
+      status:     p['Status']?.select?.name || '🆕 Mới',
+      source:     p['Nguồn lead']?.select?.name || '',
+      notes:      p['Ghi chú']?.rich_text?.[0]?.text?.content || '',
+      date:       p['Ngày liên hệ']?.date?.start || '',
+      budget:     p['Ngân sách (USD)']?.number ?? null,
+      timeline:   p['Timeline']?.rich_text?.[0]?.text?.content || '',
+      program:    (p['Chương trình quan tâm']?.multi_select || []).map(s => s.name),
+      region:     (p['Region']?.multi_select || []).map(s => s.name),
+      savedAt:    page.created_time,
+    }
+  })
+
+  return { leads, configured: true, hasMore: data.has_more }
+}
+
+async function notionUpdateLead(pageId, request, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const b     = await request.json()
+  const props = {}
+
+  if (b.status)   props['Status']           = { select: { name: b.status } }
+  if (b.notes)    props['Ghi chú']          = { rich_text: [{ text: { content: b.notes.slice(0, 1999) } }] }
+  if (b.budget)   props['Ngân sách (USD)']  = { number: parseFloat(b.budget) || null }
+  if (b.timeline) props['Timeline']         = { rich_text: [{ text: { content: b.timeline } }] }
+  if (Array.isArray(b.program) && b.program.length) {
+    props['Chương trình quan tâm'] = { multi_select: b.program.map(p => ({ name: p })) }
+  }
+
+  const res  = await fetch(`${NOTION_API}/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ properties: props }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+  return { updated: true, id: pageId }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  STATUS
 // ─────────────────────────────────────────────────────────────────────────────
 async function getStatus(env) {
@@ -424,6 +555,7 @@ async function getStatus(env) {
     agents:    !!(env.ANTHROPIC_API_KEY),
     kv:        !!(env.NAC_AGENTS),
     blog:      !!(env.NAC_AGENTS),
+    notion:    !!(env.NOTION_API_TOKEN),
   }
 }
 
