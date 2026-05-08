@@ -39,6 +39,33 @@ const CORS = {
 
 // ── Agent personas ────────────────────────────────────────────────────────────
 const AGENT_PERSONAS = {
+  leadgen: {
+    name: 'Lead Gen Agent',
+    emoji: '🎯',
+    system: `Bạn là Lead Gen Agent của Nomad Asset Collective (NAC) - thương hiệu bất động sản và lifestyle cao cấp tại Việt Nam.
+Nhiệm vụ: tạo outreach messages cá nhân hóa, thuyết phục bằng Tiếng Việt để mời khách hàng tiềm năng tư vấn.
+
+Khi nhận thông tin lead, hãy trả về ĐÚNG định dạng JSON sau (chỉ JSON, không có text khác bên ngoài):
+{
+  "subject": "Subject line email hấp dẫn, cá nhân hóa",
+  "email": "Nội dung email đầy đủ, 150-200 từ",
+  "zalo": "Tin nhắn Zalo 60-80 từ, thân thiện, có emoji",
+  "whatsapp": "WhatsApp message 60-80 từ, professional",
+  "summary": "Tóm tắt 1 câu về profile lead và angle tiếp cận"
+}
+
+Quy tắc viết:
+- Tiếng Việt chuẩn, chuyên nghiệp nhưng ấm áp, aspirational
+- Cá nhân hóa theo role và ngành của lead (đề cập đúng pain point)
+- NAC value: bất động sản premium, ROI cao, cộng đồng doanh nhân, lifestyle đẳng cấp
+- Email: subject dạng "Tên + pain point + value", body có social proof nhẹ, CTA booking tư vấn
+- Zalo: mở đầu bằng tên, emoji phù hợp 2-3 cái, link brochure nếu có
+- WhatsApp: trang trọng hơn Zalo, ngắn gọn, link đính kèm
+- CTA chính: "đặt lịch tư vấn 1-1 miễn phí" hoặc "xem dự án thực tế"
+- Nếu có LinkedIn URL, gợi ý đã xem profile và personalize theo thành tích/kinh nghiệm
+- Nếu có brochure URL, đính kèm vào cả 3 kênh
+Website: nomadassetcollective.com | Hotline: +84 28 xxxx xxxx`,
+  },
   content: {
     name: 'Content Agent',
     emoji: '✍️',
@@ -139,6 +166,15 @@ export default {
       if (pathname.startsWith('/api/agents/task/')) {
         const id = pathname.split('/').pop()
         return json(await getTask(id, env))
+      }
+
+      // ── Lead Gen ──
+      if (pathname === '/api/leadgen/generate' && request.method === 'POST') return json(await generateLeadOutreach(request, env))
+      if (pathname === '/api/leads/save'       && request.method === 'POST') return json(await saveLead(request, env))
+      if (pathname === '/api/leads/list')                                     return json(await listLeads(env))
+      if (pathname.startsWith('/api/leads/') && request.method === 'DELETE') {
+        const id = pathname.split('/').pop()
+        return json(await deleteLead(id, env))
       }
 
       return json({ error: 'Not found' }, 404)
@@ -271,6 +307,108 @@ async function updateTaskIndex(taskId, env) {
     index.push(taskId)
     await env.NAC_AGENTS.put('__index__', JSON.stringify(index))
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LEAD GEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generateLeadOutreach(request, env) {
+  if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  const body = await request.json()
+  const { linkedinUrl, name, title, company, industry, email, phone, brochureUrl, tone, notes } = body
+
+  const persona = AGENT_PERSONAS.leadgen
+
+  const userMsg = `Thông tin lead:
+- Tên: ${name || 'Không có'}
+- Chức vụ: ${title || 'Không có'}
+- Công ty: ${company || 'Không có'}
+- Ngành: ${industry || 'Không có'}
+- LinkedIn: ${linkedinUrl || 'Không có'}
+- Email: ${email || 'Không có'}
+- Điện thoại/Zalo: ${phone || 'Không có'}
+- Brochure URL: ${brochureUrl || 'Không có'}
+- Giọng văn mong muốn: ${tone || 'professional'}
+- Ghi chú thêm: ${notes || 'Không có'}
+
+Hãy tạo outreach messages cá nhân hóa cho lead này.`
+
+  const claudeRes = await fetch(ANTHROPIC, {
+    method: 'POST',
+    headers: {
+      'x-api-key':         env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type':      'application/json',
+    },
+    body: JSON.stringify({
+      model:      CLAUDE_MODEL,
+      max_tokens: 2048,
+      system:     persona.system,
+      messages:   [{ role: 'user', content: userMsg }],
+    }),
+  })
+
+  const claudeData = await claudeRes.json()
+  if (!claudeRes.ok) throw new Error(claudeData.error?.message || 'Claude API error')
+
+  const raw = claudeData.content?.[0]?.text || ''
+
+  let parsed
+  try {
+    const m = raw.match(/\{[\s\S]*\}/)
+    parsed = m ? JSON.parse(m[0]) : null
+  } catch { parsed = null }
+
+  if (!parsed) {
+    parsed = {
+      subject:  'NAC – Cơ hội bất động sản cao cấp dành riêng cho bạn',
+      email:    raw,
+      zalo:     raw,
+      whatsapp: raw,
+      summary:  `Lead: ${name || 'Unknown'} – ${title || ''} tại ${company || ''}`,
+    }
+  }
+
+  return {
+    ...parsed,
+    leadInfo: { name, title, company, industry, linkedinUrl, email, phone, brochureUrl },
+    tokens:   { input: claudeData.usage?.input_tokens, output: claudeData.usage?.output_tokens },
+    generated: new Date().toISOString(),
+  }
+}
+
+async function saveLead(request, env) {
+  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
+  const lead = await request.json()
+  const id   = `lead_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  const data = { id, ...lead, savedAt: new Date().toISOString() }
+  await env.NAC_AGENTS.put(id, JSON.stringify(data), { expirationTtl: 86400 * 180 })
+  const idxRaw = await env.NAC_AGENTS.get('__leads_index__')
+  const idx    = idxRaw ? JSON.parse(idxRaw) : []
+  idx.push(id)
+  await env.NAC_AGENTS.put('__leads_index__', JSON.stringify(idx))
+  return { saved: true, id }
+}
+
+async function listLeads(env) {
+  if (!env.NAC_AGENTS) return { leads: [], configured: false }
+  const idxRaw = await env.NAC_AGENTS.get('__leads_index__')
+  const idx    = idxRaw ? JSON.parse(idxRaw) : []
+  const leads  = (await Promise.all(
+    idx.slice(-100).map(id => env.NAC_AGENTS.get(id).then(r => r ? JSON.parse(r) : null))
+  )).filter(Boolean).reverse()
+  return { leads, configured: true }
+}
+
+async function deleteLead(id, env) {
+  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
+  await env.NAC_AGENTS.delete(id)
+  const idxRaw = await env.NAC_AGENTS.get('__leads_index__')
+  const idx    = idxRaw ? JSON.parse(idxRaw) : []
+  await env.NAC_AGENTS.put('__leads_index__', JSON.stringify(idx.filter(i => i !== id)))
+  return { deleted: id }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

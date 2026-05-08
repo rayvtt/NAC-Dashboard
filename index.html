@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 // ── WORKER CONFIG ─────────────────────────────────────────
 // After running `wrangler deploy`, paste your Worker URL here:
@@ -1071,6 +1072,243 @@ body {
   border-radius: 0 0 3px 3px;
 }
 
+/* ═══════════════════════════════════════════════════
+   LEAD GEN PAGE
+   ═══════════════════════════════════════════════════ */
+.leadgen-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.leadgen-form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.channel-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.channel-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  transition: var(--transition);
+  user-select: none;
+}
+.channel-chip:hover { border-color: var(--primary); color: var(--primary); }
+.channel-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.tone-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tone-btn {
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+  transition: var(--transition);
+}
+.tone-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
+.leadgen-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid var(--gray-200);
+  margin-bottom: 16px;
+}
+.leadgen-tab {
+  padding: 10px 18px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-400);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  transition: var(--transition);
+}
+.leadgen-tab:hover { color: var(--gray-900); }
+.leadgen-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.leadgen-output-box {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--gray-900);
+  background: var(--gray-50);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 140px;
+  max-height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-200);
+  font-family: 'Inter', sans-serif;
+}
+.leadgen-subject-box {
+  background: var(--orange-faint);
+  border: 1px solid rgba(207,108,79,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 12px;
+}
+.lead-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.lead-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--gray-50);
+  color: var(--gray-600);
+  font-weight: 600;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.lead-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-900);
+  vertical-align: middle;
+}
+.lead-table tr:last-child td { border-bottom: none; }
+.lead-table tr:hover td { background: var(--gray-50); }
+.lead-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.lead-status-new    { background: #dbeafe; color: #1d4ed8; }
+.lead-status-sent   { background: #dcfce7; color: #166534; }
+.lead-status-booked { background: #fef9c3; color: #854d0e; }
+#leadgen-pdf-preview {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.55);
+  align-items: center;
+  justify-content: center;
+}
+#leadgen-pdf-preview.open { display: flex; }
+.pdf-preview-inner {
+  background: white;
+  width: 700px;
+  max-width: 96vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-premium);
+  display: flex;
+  flex-direction: column;
+}
+.pdf-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+#pdf-content {
+  padding: 36px 40px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #1C1917;
+  flex: 1;
+}
+.pdf-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #CF6C4F;
+}
+.pdf-logo-text {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: #1C1917;
+}
+.pdf-logo-dot { color: #CF6C4F; }
+.pdf-meta { font-size: 10px; color: #78716C; margin-top: 2px; }
+.pdf-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #78716C;
+  margin: 20px 0 8px;
+}
+.pdf-lead-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+  margin-bottom: 24px;
+  background: #FAF9F7;
+  border-radius: 8px;
+  padding: 14px;
+}
+.pdf-lead-item { font-size: 12px; }
+.pdf-lead-label { color: #78716C; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.pdf-message-box {
+  background: #FAF9F7;
+  border-left: 3px solid #CF6C4F;
+  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+.pdf-channel-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #CF6C4F;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pdf-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #E2DFDA;
+  font-size: 10px;
+  color: #A8A29E;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .leadgen-form-grid, .leadgen-form-grid-3 { grid-template-columns: 1fr; }
+}
+
 /* ── RESPONSIVE: TABLET (≤ 900px) ── */
 @media (max-width: 900px) {
   .hamburger { display: flex; }
@@ -1164,6 +1402,9 @@ body {
   <a class="nav-item" data-page="agents">
     <span class="icon">🤖</span> Agents
     <span class="nav-badge" id="active-badge">3</span>
+  </a>
+  <a class="nav-item" data-page="leadgen">
+    <span class="icon">🎯</span> Lead Gen
   </a>
   <a class="nav-item" data-page="tasks">
     <span class="icon">✅</span> Tasks
@@ -1677,6 +1918,172 @@ body {
       <div class="agents-grid" id="agents-grid-all"></div>
     </div>
 
+    <!-- ═══════════════ LEAD GEN PAGE ═══════════════ -->
+    <div id="leadgen-page" class="page">
+
+      <!-- Lead Input Panel -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>🎯</span>
+          <div class="panel-title">Lead Gen Agent</div>
+          <span style="font-size:11px;color:var(--gray-400);margin-left:auto;">AI viết email & tin nhắn outreach cá nhân hóa bằng Tiếng Việt</span>
+        </div>
+        <div class="panel-body">
+
+          <!-- Row 1: LinkedIn + Name -->
+          <div class="leadgen-form-grid">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">LinkedIn URL <span style="font-size:10px;color:var(--gray-400)">(paste để AI personalize)</span></label>
+              <input class="form-input" id="lg-linkedin" placeholder="https://linkedin.com/in/nguyen-van-a">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Họ tên <span style="color:#ef4444">*</span></label>
+              <input class="form-input" id="lg-name" placeholder="Nguyễn Văn A">
+            </div>
+          </div>
+
+          <!-- Row 2: Title + Company + Industry -->
+          <div class="leadgen-form-grid-3">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Chức vụ</label>
+              <input class="form-input" id="lg-title" placeholder="CEO / Giám đốc / ...">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Công ty</label>
+              <input class="form-input" id="lg-company" placeholder="Tên công ty">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Ngành</label>
+              <select class="form-select" id="lg-industry">
+                <option value="">Chọn ngành...</option>
+                <option>Bất động sản</option>
+                <option>Tài chính / Ngân hàng</option>
+                <option>Công nghệ</option>
+                <option>Thương mại / Xuất nhập khẩu</option>
+                <option>Xây dựng</option>
+                <option>Y tế / Dược phẩm</option>
+                <option>Giáo dục</option>
+                <option>Nhà hàng / Khách sạn</option>
+                <option>Sản xuất</option>
+                <option>Dịch vụ tư vấn</option>
+                <option>Khác</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 3: Email + Phone -->
+          <div class="leadgen-form-grid">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Email</label>
+              <input class="form-input" id="lg-email" type="email" placeholder="email@company.com">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Điện thoại / Zalo / WhatsApp</label>
+              <input class="form-input" id="lg-phone" placeholder="+84 xxx xxx xxx">
+            </div>
+          </div>
+
+          <!-- Row 4: Brochure URL + Notes -->
+          <div class="leadgen-form-grid">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Brochure URL <span style="font-size:10px;color:var(--gray-400)">(đính kèm vào tất cả kênh)</span></label>
+              <input class="form-input" id="lg-brochure" placeholder="https://nomadassetcollective.com/brochure.pdf">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Ghi chú thêm</label>
+              <input class="form-input" id="lg-notes" placeholder="VD: đã gặp tại sự kiện, quan tâm dự án X...">
+            </div>
+          </div>
+
+          <!-- Tone selector -->
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Giọng văn</label>
+            <div class="tone-row" id="lg-tone-row">
+              <button class="tone-btn active" data-tone="professional" onclick="selectTone(this)">💼 Professional</button>
+              <button class="tone-btn" data-tone="warm" onclick="selectTone(this)">🤝 Thân thiện</button>
+              <button class="tone-btn" data-tone="urgent" onclick="selectTone(this)">⚡ Urgency</button>
+              <button class="tone-btn" data-tone="casual" onclick="selectTone(this)">😊 Casual</button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="lg-generate-btn" onclick="generateLeadOutreach()">🎯 Generate Outreach</button>
+            <button class="btn btn-ghost" onclick="clearLeadForm()">✕ Xóa form</button>
+            <span id="lg-status" style="font-size:12px;color:var(--gray-400);"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="panel mb-20" id="lg-output-panel" style="display:none;">
+        <div class="panel-head">
+          <span>📤</span>
+          <div class="panel-title" id="lg-output-name">Outreach cho ...</div>
+          <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="copyLeadContent()">📋 Copy</button>
+            <button class="btn btn-ghost btn-sm" onclick="openLeadPDF()">📄 Export PDF</button>
+            <button class="btn btn-orange btn-sm" onclick="saveCurrentLead()">💾 Lưu Lead</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('lg-output-panel').style.display='none'">✕</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <!-- Summary -->
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:14px;padding:8px 12px;background:var(--gray-50);border-radius:6px;" id="lg-summary"></div>
+
+          <!-- Subject line (email only) -->
+          <div class="leadgen-subject-box" id="lg-subject-box" style="display:none;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;opacity:0.7;">Subject Line</span><br>
+            <span id="lg-subject-text"></span>
+          </div>
+
+          <!-- Channel Tabs -->
+          <div class="leadgen-tabs">
+            <div class="leadgen-tab active" id="lg-tab-email" onclick="switchLeadTab('email')">✉️ Email</div>
+            <div class="leadgen-tab" id="lg-tab-zalo" onclick="switchLeadTab('zalo')">💬 Zalo</div>
+            <div class="leadgen-tab" id="lg-tab-whatsapp" onclick="switchLeadTab('whatsapp')">📱 WhatsApp</div>
+          </div>
+
+          <div class="leadgen-output-box" id="lg-output-email"></div>
+          <div class="leadgen-output-box" id="lg-output-zalo" style="display:none;"></div>
+          <div class="leadgen-output-box" id="lg-output-whatsapp" style="display:none;"></div>
+
+          <div style="font-size:11px;color:var(--gray-400);margin-top:8px;" id="lg-token-info"></div>
+        </div>
+      </div>
+
+      <!-- Lead Database -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>👥</span>
+          <div class="panel-title">Lead Database</div>
+          <span id="lg-lead-count" style="font-size:11px;color:var(--gray-400);margin-left:8px;"></span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadLeads()">↻ Refresh</button>
+        </div>
+        <div class="panel-body no-pad" id="lg-leads-body">
+          <div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">
+            Generate và lưu lead đầu tiên để xem database tại đây.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Lead Gen PDF Preview Modal -->
+    <div id="leadgen-pdf-preview">
+      <div class="pdf-preview-inner">
+        <div class="pdf-preview-toolbar">
+          <span style="font-weight:700;font-size:14px;">Preview PDF</span>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="downloadLeadPDF()">⬇ Download PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="closeLeadPDF()">✕ Close</button>
+          </div>
+        </div>
+        <div id="pdf-content">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+    </div>
+
     <!-- ═══════════════ TASKS PAGE ═══════════════ -->
     <div id="tasks-page" class="page">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
@@ -1850,6 +2257,7 @@ const pageNames = {
   analytics: 'Website Analytics',
   articles: 'Articles',
   agents: 'Agent Hub',
+  leadgen: 'Lead Gen',
   tasks: 'Task Board',
   settings: 'API Settings',
 };
@@ -2952,6 +3360,320 @@ if (WORKER_URL || localStorage.getItem('nac_worker_url')) {
 } else {
   document.getElementById('settings-badge').style.display = 'inline'
 }
+
+// ═══════════════════════════════════════════════════
+//  LEAD GEN
+// ═══════════════════════════════════════════════════
+
+let _leadgenCurrentData = null
+
+function selectTone(btn) {
+  document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+}
+
+function switchLeadTab(tab) {
+  document.querySelectorAll('.leadgen-tab').forEach(t => t.classList.remove('active'))
+  document.getElementById(`lg-tab-${tab}`).classList.add('active')
+  ;['email','zalo','whatsapp'].forEach(t => {
+    const el = document.getElementById(`lg-output-${t}`)
+    if (el) el.style.display = t === tab ? 'block' : 'none'
+  })
+  const subjectBox = document.getElementById('lg-subject-box')
+  if (subjectBox) subjectBox.style.display = tab === 'email' ? 'block' : 'none'
+}
+
+function clearLeadForm() {
+  ;['lg-linkedin','lg-name','lg-title','lg-company','lg-email','lg-phone','lg-brochure','lg-notes'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  })
+  const ind = document.getElementById('lg-industry')
+  if (ind) ind.value = ''
+  document.querySelectorAll('.tone-btn').forEach((b,i) => b.classList.toggle('active', i===0))
+  document.getElementById('lg-status').textContent = ''
+}
+
+async function generateLeadOutreach() {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  if (!workerUrl) {
+    document.getElementById('lg-status').textContent = '⚠ Cần cấu hình Worker URL trong Settings'
+    return
+  }
+  const name = document.getElementById('lg-name').value.trim()
+  if (!name) {
+    document.getElementById('lg-status').textContent = '⚠ Vui lòng nhập họ tên lead'
+    document.getElementById('lg-name').focus()
+    return
+  }
+
+  const btn    = document.getElementById('lg-generate-btn')
+  const status = document.getElementById('lg-status')
+  btn.disabled = true
+  btn.textContent = '⏳ Đang tạo...'
+  status.textContent = 'Lead Gen Agent đang viết outreach...'
+
+  const tone = document.querySelector('.tone-btn.active')?.dataset.tone || 'professional'
+
+  const payload = {
+    linkedinUrl: document.getElementById('lg-linkedin').value.trim(),
+    name,
+    title:      document.getElementById('lg-title').value.trim(),
+    company:    document.getElementById('lg-company').value.trim(),
+    industry:   document.getElementById('lg-industry').value,
+    email:      document.getElementById('lg-email').value.trim(),
+    phone:      document.getElementById('lg-phone').value.trim(),
+    brochureUrl: document.getElementById('lg-brochure').value.trim(),
+    notes:      document.getElementById('lg-notes').value.trim(),
+    tone,
+  }
+
+  try {
+    const res  = await fetch(`${workerUrl}/api/leadgen/generate`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    const data = await res.json()
+
+    if (data.error) throw new Error(data.error)
+
+    _leadgenCurrentData = data
+
+    document.getElementById('lg-output-name').textContent = `Outreach cho ${name}${payload.company ? ' — ' + payload.company : ''}`
+    document.getElementById('lg-summary').textContent = data.summary || `Lead: ${name} · ${payload.title || ''} tại ${payload.company || ''}`
+    document.getElementById('lg-subject-text').textContent = data.subject || ''
+    document.getElementById('lg-subject-box').style.display = 'block'
+    document.getElementById('lg-output-email').textContent = data.email || ''
+    document.getElementById('lg-output-zalo').textContent  = data.zalo  || ''
+    document.getElementById('lg-output-whatsapp').textContent = data.whatsapp || ''
+    document.getElementById('lg-token-info').textContent =
+      data.tokens ? `Tokens: ${data.tokens.input} in / ${data.tokens.output} out` : ''
+
+    switchLeadTab('email')
+    document.getElementById('lg-output-panel').style.display = 'block'
+    document.getElementById('lg-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    status.textContent = '✅ Hoàn tất!'
+    setTimeout(() => { status.textContent = '' }, 3000)
+  } catch (err) {
+    status.textContent = `❌ ${err.message}`
+  } finally {
+    btn.disabled = false
+    btn.textContent = '🎯 Generate Outreach'
+  }
+}
+
+function copyLeadContent() {
+  if (!_leadgenCurrentData) return
+  const activeTab = document.querySelector('.leadgen-tab.active')?.id?.replace('lg-tab-','') || 'email'
+  const text = _leadgenCurrentData[activeTab] || ''
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.currentTarget
+    const orig = btn.textContent
+    btn.textContent = '✅ Copied!'
+    setTimeout(() => { btn.textContent = orig }, 1800)
+  })
+}
+
+async function saveCurrentLead() {
+  if (!_leadgenCurrentData) return
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  if (!workerUrl) return
+  try {
+    const res  = await fetch(`${workerUrl}/api/leads/save`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        ..._leadgenCurrentData.leadInfo,
+        subject:   _leadgenCurrentData.subject,
+        email:     _leadgenCurrentData.email,
+        zalo:      _leadgenCurrentData.zalo,
+        whatsapp:  _leadgenCurrentData.whatsapp,
+        summary:   _leadgenCurrentData.summary,
+        status:    'new',
+        generated: _leadgenCurrentData.generated,
+      }),
+    })
+    const data = await res.json()
+    if (data.saved) {
+      const btn = event.currentTarget
+      btn.textContent = '✅ Đã lưu!'
+      setTimeout(() => { btn.textContent = '💾 Lưu Lead' }, 2000)
+      loadLeads()
+    }
+  } catch (e) {
+    console.error('Save lead error:', e)
+  }
+}
+
+async function loadLeads() {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  const body = document.getElementById('lg-leads-body')
+  if (!body) return
+  if (!workerUrl) {
+    body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Cần cấu hình Worker URL để lưu leads.</div>'
+    return
+  }
+  try {
+    const res  = await fetch(`${workerUrl}/api/leads/list`)
+    const data = await res.json()
+    renderLeadTable(data.leads || [])
+  } catch (e) {
+    body.innerHTML = `<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Không tải được leads: ${e.message}</div>`
+  }
+}
+
+function renderLeadTable(leads) {
+  const body = document.getElementById('lg-leads-body')
+  const count = document.getElementById('lg-lead-count')
+  if (count) count.textContent = `${leads.length} lead${leads.length !== 1 ? 's' : ''}`
+  if (!leads.length) {
+    body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">Chưa có lead nào được lưu.</div>'
+    return
+  }
+  body.innerHTML = `
+    <div style="overflow-x:auto;">
+    <table class="lead-table">
+      <thead>
+        <tr>
+          <th>Họ tên</th><th>Chức vụ</th><th>Công ty</th><th>Ngành</th>
+          <th>Email</th><th>Điện thoại</th><th>Trạng thái</th><th>Ngày lưu</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${leads.map(l => `
+          <tr>
+            <td><strong>${escH(l.name||'')}</strong></td>
+            <td>${escH(l.title||'')}</td>
+            <td>${escH(l.company||'')}</td>
+            <td>${escH(l.industry||'')}</td>
+            <td><a href="mailto:${escH(l.email||'')}" style="color:var(--primary)">${escH(l.email||'—')}</a></td>
+            <td>${escH(l.phone||'—')}</td>
+            <td><span class="lead-status-badge lead-status-${l.status||'new'}">${l.status||'new'}</span></td>
+            <td style="color:var(--gray-400);font-size:11px;">${l.savedAt ? relativeTime(l.savedAt) : '—'}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="viewLeadContent('${l.id}')" title="Xem nội dung">👁</button>
+              <button class="btn btn-ghost btn-sm" onclick="deleteLeadConfirm('${l.id}')" style="color:#ef4444;" title="Xóa">🗑</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`
+}
+
+function escH(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+async function deleteLeadConfirm(id) {
+  if (!confirm('Xóa lead này?')) return
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  if (!workerUrl) return
+  await fetch(`${workerUrl}/api/leads/${id}`, { method: 'DELETE' })
+  loadLeads()
+}
+
+function viewLeadContent(id) {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  if (!workerUrl) return
+  fetch(`${workerUrl}/api/leads/list`)
+    .then(r => r.json())
+    .then(data => {
+      const lead = (data.leads||[]).find(l => l.id === id)
+      if (!lead) return
+      _leadgenCurrentData = {
+        subject: lead.subject, email: lead.email, zalo: lead.zalo,
+        whatsapp: lead.whatsapp, summary: lead.summary,
+        leadInfo: { name: lead.name, title: lead.title, company: lead.company,
+          industry: lead.industry, email: lead.email, phone: lead.phone,
+          brochureUrl: lead.brochureUrl, linkedinUrl: lead.linkedinUrl }
+      }
+      document.getElementById('lg-output-name').textContent = `Outreach cho ${lead.name||''}${lead.company?' — '+lead.company:''}`
+      document.getElementById('lg-summary').textContent = lead.summary || ''
+      document.getElementById('lg-subject-text').textContent = lead.subject || ''
+      document.getElementById('lg-subject-box').style.display = 'block'
+      document.getElementById('lg-output-email').textContent = lead.email || ''
+      document.getElementById('lg-output-zalo').textContent  = lead.zalo  || ''
+      document.getElementById('lg-output-whatsapp').textContent = lead.whatsapp || ''
+      document.getElementById('lg-token-info').textContent = ''
+      switchLeadTab('email')
+      document.getElementById('lg-output-panel').style.display = 'block'
+      document.getElementById('lg-output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+}
+
+// ── PDF Export ────────────────────────────────────────────────────────────────
+function openLeadPDF() {
+  if (!_leadgenCurrentData) return
+  const d    = _leadgenCurrentData
+  const info = d.leadInfo || {}
+  const now  = new Date().toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' })
+
+  document.getElementById('pdf-content').innerHTML = `
+    <div class="pdf-header">
+      <div>
+        <div class="pdf-logo-text">NAC<span class="pdf-logo-dot">.</span></div>
+        <div class="pdf-meta">Nomad Asset Collective · nomadassetcollective.com</div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <div style="font-size:12px;font-weight:700;color:#CF6C4F;">Lead Outreach</div>
+        <div style="font-size:11px;color:#A8A29E;">${now}</div>
+      </div>
+    </div>
+
+    ${d.summary ? `<div style="font-size:12px;color:#78716C;margin-bottom:20px;padding:10px 14px;background:#FAF9F7;border-radius:6px;font-style:italic;">${escH(d.summary)}</div>` : ''}
+
+    <div class="pdf-section-title">Thông tin Lead</div>
+    <div class="pdf-lead-grid">
+      ${[['Họ tên', info.name],['Chức vụ', info.title],['Công ty', info.company],['Ngành', info.industry],['Email', info.email],['Điện thoại', info.phone]].filter(([,v])=>v).map(([l,v])=>`
+        <div class="pdf-lead-item"><div class="pdf-lead-label">${l}</div><div>${escH(v)}</div></div>`).join('')}
+      ${info.linkedinUrl ? `<div class="pdf-lead-item" style="grid-column:1/-1"><div class="pdf-lead-label">LinkedIn</div><div><a href="${escH(info.linkedinUrl)}" style="color:#CF6C4F;">${escH(info.linkedinUrl)}</a></div></div>` : ''}
+    </div>
+
+    <div class="pdf-section-title">Email Outreach</div>
+    ${d.subject ? `<div style="font-size:12px;font-weight:700;margin-bottom:8px;color:#CF6C4F;">Subject: ${escH(d.subject)}</div>` : ''}
+    <div class="pdf-message-box">${escH(d.email||'')}</div>
+
+    <div class="pdf-section-title">Zalo Message</div>
+    <div class="pdf-message-box">${escH(d.zalo||'')}</div>
+
+    <div class="pdf-section-title">WhatsApp Message</div>
+    <div class="pdf-message-box">${escH(d.whatsapp||'')}</div>
+
+    ${info.brochureUrl ? `<div class="pdf-section-title">Brochure</div><div style="font-size:12px;margin-bottom:8px;"><a href="${escH(info.brochureUrl)}" style="color:#CF6C4F;">${escH(info.brochureUrl)}</a></div>` : ''}
+
+    <div class="pdf-footer">
+      Nomad Asset Collective · info@nomadassetcollective.com · Tài liệu tạo tự động ${now}
+    </div>`
+
+  document.getElementById('leadgen-pdf-preview').classList.add('open')
+}
+
+function closeLeadPDF() {
+  document.getElementById('leadgen-pdf-preview').classList.remove('open')
+}
+
+function downloadLeadPDF() {
+  if (typeof html2pdf === 'undefined') {
+    alert('PDF library chưa tải. Vui lòng thử lại sau.')
+    return
+  }
+  const name = _leadgenCurrentData?.leadInfo?.name || 'lead'
+  const element = document.getElementById('pdf-content')
+  html2pdf().set({
+    margin:      [12, 14],
+    filename:    `NAC-outreach-${name.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+    image:       { type: 'jpeg', quality: 0.96 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  }).from(element).save()
+}
+
+// Auto-load leads when navigating to the page
+document.querySelector('[data-page="leadgen"]').addEventListener('click', () => {
+  setTimeout(loadLeads, 80)
+})
 </script>
 
 <!-- BOTTOM TAB BAR (mobile only) -->
