@@ -37,7 +37,7 @@ const WORKER_URL = localStorage.getItem('nac_worker_url') || ''
   --gray-600: #78716C;
   --gray-900: #1C1917;
 
-  --radius: 10px;
+  --radius: 6px;
   --shadow:    0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
 
@@ -72,7 +72,7 @@ const WORKER_URL = localStorage.getItem('nac_worker_url') || ''
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
-  background-image: radial-gradient(circle, rgba(0,0,0,0.055) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 24px 24px;
   background-attachment: fixed;
   color: var(--gray-900);
@@ -209,7 +209,12 @@ body {
   font-weight: 600;
   border-left-color: var(--primary);
 }
-.nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+.nav-item .icon { font-size: 15px; width: 20px; text-align: center; display: flex; align-items: center; justify-content: center; }
+.nav-item .icon img { width: 15px; height: 15px; display: block; opacity: 0.75; filter: brightness(0) invert(1); }
+.nav-item.active .icon img { opacity: 1; }
+.platform-icon img { width: 26px; height: 26px; display: block; filter: brightness(0) invert(1); }
+.panel-head > span { display: flex; align-items: center; }
+.panel-head > span img { width: 14px; height: 14px; display: block; }
 .nav-badge {
   margin-left: auto;
   background: var(--primary);
@@ -330,22 +335,23 @@ body {
 .stat-card {
   background: var(--card-bg);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: 18px 20px;
   box-shadow: var(--shadow-card);
-  border: var(--card-border);
-  border-top: 3px solid transparent;
+  border: 1px solid var(--gray-200);
+  border-top: 2px solid transparent;
+  border-left: 3px solid transparent;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
   animation: fadeInUp 0.5s ease both;
 }
 .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-premium); }
-.stat-card.blue   { border-top-color: var(--primary); }
-.stat-card.orange { border-top-color: #E97B4A; }
-.stat-card.green  { border-top-color: #3D9A6F; }
-.stat-card.purple { border-top-color: #7C5EB8; }
-.stat-card.teal   { border-top-color: #2B8A84; }
-.stat-card.pink   { border-top-color: #C4567A; }
+.stat-card.blue   { border-left-color: var(--primary); }
+.stat-card.orange { border-left-color: #E97B4A; }
+.stat-card.green  { border-left-color: #3D9A6F; }
+.stat-card.purple { border-left-color: #7C5EB8; }
+.stat-card.teal   { border-left-color: #2B8A84; }
+.stat-card.pink   { border-left-color: #C4567A; }
 .stat-card:nth-child(1) { animation-delay: 0.05s; }
 .stat-card:nth-child(2) { animation-delay: 0.10s; }
 .stat-card:nth-child(3) { animation-delay: 0.15s; }
@@ -399,22 +405,26 @@ body {
   animation: scaleIn 0.4s ease both;
 }
 .panel-head {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gray-200);
   display: flex;
   align-items: center;
   gap: 10px;
   background: var(--gray-50);
+  border-left: 3px solid var(--primary);
 }
 .panel-head .panel-title {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--gray-900);
-  letter-spacing: -0.1px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-family: var(--mono);
   flex: 1;
 }
 .panel-head .panel-sub {
-  font-size: 11px;
+  font-size: 10px;
+  font-family: var(--mono);
   color: var(--gray-400);
 }
 .panel-body { padding: 18px 20px; }
@@ -1130,21 +1140,21 @@ body {
     <span class="icon">📱</span> All Platforms
   </a>
   <a class="nav-item" data-page="facebook">
-    <span class="icon">📘</span> Facebook
+    <span class="icon"><img src="https://cdn.simpleicons.org/facebook/ffffff" alt=""></span> Facebook
   </a>
   <a class="nav-item" data-page="instagram">
-    <span class="icon">📸</span> Instagram
+    <span class="icon"><img src="https://cdn.simpleicons.org/instagram/ffffff" alt=""></span> Instagram
   </a>
   <a class="nav-item" data-page="threads">
-    <span class="icon">🧵</span> Threads
+    <span class="icon"><img src="https://cdn.simpleicons.org/threads/ffffff" alt=""></span> Threads
   </a>
   <a class="nav-item" data-page="tiktok">
-    <span class="icon">🎵</span> TikTok
+    <span class="icon"><img src="https://cdn.simpleicons.org/tiktok/ffffff" alt=""></span> TikTok
   </a>
 
   <div class="sidebar-section">Website</div>
   <a class="nav-item" data-page="analytics">
-    <span class="icon">📊</span> Analytics
+    <span class="icon"><img src="https://cdn.simpleicons.org/googleanalytics/ffffff" alt=""></span> Analytics
   </a>
   <a class="nav-item" data-page="articles">
     <span class="icon">📝</span> Articles
@@ -1171,6 +1181,17 @@ body {
     <div style="margin-top:2px;opacity:0.55;">Last sync: just now</div>
   </div>
 </nav>
+
+<!-- GRAIN OVERLAY -->
+<div id="grain-overlay" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9997;overflow:hidden;">
+  <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+    <filter id="grain-f">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grain-f)" opacity="0.038"/>
+  </svg>
+</div>
 
 <!-- SIDEBAR BACKDROP -->
 <div id="sidebar-backdrop" onclick="closeSidebar()"></div>
@@ -1243,7 +1264,7 @@ body {
       <div class="platform-grid">
         <div class="platform-card">
           <div class="platform-header fb-bg">
-            <div class="platform-icon">📘</div>
+            <div class="platform-icon"><img src="https://cdn.simpleicons.org/facebook/ffffff" alt="Facebook"></div>
             <div>
               <div class="platform-name">Facebook</div>
               <div class="platform-handle">Page Analytics</div>
@@ -1265,7 +1286,7 @@ body {
         </div>
         <div class="platform-card">
           <div class="platform-header ig-bg">
-            <div class="platform-icon">📸</div>
+            <div class="platform-icon"><img src="https://cdn.simpleicons.org/instagram/ffffff" alt="Instagram"></div>
             <div>
               <div class="platform-name">Instagram</div>
               <div class="platform-handle">Business Account</div>
@@ -1287,7 +1308,7 @@ body {
         </div>
         <div class="platform-card">
           <div class="platform-header threads-bg">
-            <div class="platform-icon">🧵</div>
+            <div class="platform-icon"><img src="https://cdn.simpleicons.org/threads/ffffff" alt="Threads"></div>
             <div>
               <div class="platform-name">Threads</div>
               <div class="platform-handle">Public Thread</div>
@@ -1309,7 +1330,7 @@ body {
         </div>
         <div class="platform-card">
           <div class="platform-header tiktok-bg">
-            <div class="platform-icon">🎵</div>
+            <div class="platform-icon"><img src="https://cdn.simpleicons.org/tiktok/ffffff" alt="TikTok"></div>
             <div>
               <div class="platform-name">TikTok</div>
               <div class="platform-handle">Creator Account</div>
@@ -1455,7 +1476,7 @@ body {
         <div class="stat-card purple"><div class="stat-label">Engagement</div><div class="stat-value" id="fb-stat-engrate">5.1%</div><div class="stat-change down">↓ 0.2%</div></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>📈</span><div class="panel-title">Facebook Page Insights (28 Days)</div></div>
+        <div class="panel-head"><span><img src="https://cdn.simpleicons.org/facebook/1877F2" alt=""></span><div class="panel-title">Facebook Page Insights (28 Days)</div></div>
         <div class="panel-body"><div class="chart-container tall"><canvas id="fbChart"></canvas></div></div>
       </div>
     </div>
@@ -1469,7 +1490,7 @@ body {
         <div class="stat-card green"><div class="stat-label">Media Count</div><div class="stat-value" id="ig-stat-media">830</div><div class="stat-change up">↑ 9%</div></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>📈</span><div class="panel-title">Instagram Insights (28 Days)</div></div>
+        <div class="panel-head"><span><img src="https://cdn.simpleicons.org/instagram/C13584" alt=""></span><div class="panel-title">Instagram Insights (28 Days)</div></div>
         <div class="panel-body"><div class="chart-container tall"><canvas id="igChart"></canvas></div></div>
       </div>
     </div>
@@ -1488,7 +1509,7 @@ body {
         <div class="stat-card purple"><div class="stat-label">Replies</div><div class="stat-value">412</div><div class="stat-change up">↑ 11%</div></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>📈</span><div class="panel-title">Threads Activity (28 Days)</div></div>
+        <div class="panel-head"><span><img src="https://cdn.simpleicons.org/threads/000000" alt=""></span><div class="panel-title">Threads Activity (28 Days)</div></div>
         <div class="panel-body"><div class="chart-container tall"><canvas id="thChart"></canvas></div></div>
       </div>
     </div>
@@ -1502,7 +1523,7 @@ body {
         <div class="stat-card purple"><div class="stat-label">Shares</div><div class="stat-value" id="tt-stat-shares">1,240</div><div class="stat-change up">↑ 24%</div></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>📈</span><div class="panel-title">TikTok Analytics (28 Days)</div></div>
+        <div class="panel-head"><span><img src="https://cdn.simpleicons.org/tiktok/010101" alt=""></span><div class="panel-title">TikTok Analytics (28 Days)</div></div>
         <div class="panel-body"><div class="chart-container tall"><canvas id="ttChart"></canvas></div></div>
       </div>
     </div>
