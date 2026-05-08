@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAC Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── WORKER CONFIG ─────────────────────────────────────────
+// After running `wrangler deploy`, paste your Worker URL here:
+const WORKER_URL = localStorage.getItem('nac_worker_url') || ''
+// ─────────────────────────────────────────────────────────
+</script>
+<style>
+:root {
+  --primary: #1800ad;
+  --primary-light: #2a14c8;
+  --primary-dark: #0f0080;
+  --primary-faint: #eeeeff;
+  --orange: #F4622A;
+  --orange-light: #ff7d48;
+  --orange-faint: #fff0eb;
+  --white: #ffffff;
+  --bg: #f5f5ff;
+  --sidebar-w: 220px;
+  --gray-50: #fafafa;
+  --gray-100: #f0f0f8;
+  --gray-200: #ddddf0;
+  --gray-400: #9999bb;
+  --gray-600: #4a4a6a;
+  --gray-900: #1a1a2e;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(24,0,173,0.08);
+  --shadow-md: 0 4px 24px rgba(24,0,173,0.13);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--gray-900);
+  display: flex;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--primary);
+  color: white;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+.sidebar-logo .logo-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.sidebar-logo .logo-sub {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 2px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.logo-dot { color: var(--orange); }
+
+.sidebar-section {
+  padding: 14px 12px 6px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.45;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  margin: 1px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.75;
+  transition: all 0.15s;
+  color: white;
+  text-decoration: none;
+}
+.nav-item:hover { background: rgba(255,255,255,0.1); opacity: 1; }
+.nav-item.active { background: rgba(255,255,255,0.18); opacity: 1; font-weight: 600; }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--orange);
+  color: white;
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  font-weight: 700;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+/* ── MAIN ── */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+#topbar .page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  flex: 1;
+}
+.topbar-actions { display: flex; gap: 8px; }
+.btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-orange { background: var(--orange); color: white; }
+.btn-orange:hover { background: var(--orange-light); }
+.btn-ghost { background: var(--gray-100); color: var(--gray-600); }
+.btn-ghost:hover { background: var(--gray-200); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+
+.last-updated {
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+/* ── CONTENT ── */
+#content { padding: 24px 28px; flex: 1; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── STAT CARDS ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  border-top: 3px solid transparent;
+  transition: transform 0.15s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-card.blue { border-top-color: var(--primary); }
+.stat-card.orange { border-top-color: var(--orange); }
+.stat-card.green { border-top-color: #22c55e; }
+.stat-card.purple { border-top-color: #a855f7; }
+.stat-card.teal { border-top-color: #14b8a6; }
+.stat-card.pink { border-top-color: #ec4899; }
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--gray-400);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--gray-900);
+  line-height: 1;
+}
+.stat-change {
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.stat-change.up { color: #22c55e; }
+.stat-change.down { color: #ef4444; }
+.stat-platform { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+/* ── GRID LAYOUTS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.grid-6040 { display: grid; grid-template-columns: 60% 40%; gap: 20px; }
+.grid-4060 { display: grid; grid-template-columns: 40% 60%; gap: 20px; }
+@media (max-width: 1100px) {
+  .grid-2, .grid-3, .grid-6040, .grid-4060 { grid-template-columns: 1fr; }
+}
+
+/* ── PANEL ── */
+.panel {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.panel-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel-head .panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-900);
+  flex: 1;
+}
+.panel-head .panel-sub {
+  font-size: 11px;
+  color: var(--gray-400);
+}
+.panel-body { padding: 18px 20px; }
+.panel-body.no-pad { padding: 0; }
+.mb-20 { margin-bottom: 20px; }
+
+/* ── PLATFORM CARDS ── */
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.platform-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.platform-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.platform-header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+}
+.platform-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.platform-name { font-weight: 700; font-size: 15px; }
+.platform-handle { font-size: 11px; opacity: 0.8; }
+.platform-body { padding: 14px 18px; }
+.platform-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.p-metric { text-align: center; }
+.p-metric-val { font-size: 18px; font-weight: 800; color: var(--gray-900); }
+.p-metric-label { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; }
+.platform-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--gray-400);
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100);
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+.status-dot.live { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.25); }
+.status-dot.syncing { background: var(--orange); }
+.status-dot.error { background: #ef4444; }
+
+/* platform gradients */
+.fb-bg { background: linear-gradient(135deg, #1877F2, #0b5fcc); }
+.ig-bg { background: linear-gradient(135deg, #833AB4, #C13584, #E1306C, #FD1D1D); }
+.threads-bg { background: linear-gradient(135deg, #1a1a1a, #3a3a3a); }
+.tiktok-bg { background: linear-gradient(135deg, #010101, #69C9D0); }
+.web-bg { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
+
+/* ── CHART CONTAINER ── */
+.chart-container {
+  position: relative;
+  height: 220px;
+}
+.chart-container.tall { height: 280px; }
+
+/* ── TABLE ── */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--gray-400);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-50);
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 13px;
+  color: var(--gray-600);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--primary-faint); }
+.data-table .bold { font-weight: 600; color: var(--gray-900); }
+.data-table .tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── AGENT CARDS ── */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.agent-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  border-left: 4px solid transparent;
+  transition: transform 0.15s;
+}
+.agent-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.agent-card.active-agent { border-left-color: #22c55e; }
+.agent-card.idle-agent { border-left-color: var(--gray-400); }
+.agent-card.busy-agent { border-left-color: var(--orange); }
+.agent-card.error-agent { border-left-color: #ef4444; }
+
+.agent-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.agent-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--primary-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.agent-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.agent-role { font-size: 11px; color: var(--gray-400); }
+.agent-status-badge {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-active { background: #dcfce7; color: #15803d; }
+.badge-idle { background: var(--gray-100); color: var(--gray-600); }
+.badge-busy { background: var(--orange-faint); color: #c14d17; }
+.badge-error { background: #fee2e2; color: #dc2626; }
+
+.agent-task {
+  background: var(--gray-50);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--gray-600);
+  margin-bottom: 12px;
+  border-left: 3px solid var(--primary-faint);
+}
+.agent-task-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 3px; font-weight: 600; }
+.agent-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--gray-400);
+}
+.agent-actions { display: flex; gap: 6px; margin-top: 12px; }
+
+/* ── PROGRESS BAR ── */
+.progress-bar {
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transition: width 0.5s;
+}
+.progress-fill.orange { background: var(--orange); }
+.progress-fill.green { background: #22c55e; }
+
+/* ── KANBAN ── */
+#tasks-page .kanban {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 900px) { #tasks-page .kanban { grid-template-columns: 1fr; } }
+
+.kanban-col {
+  background: var(--gray-100);
+  border-radius: var(--radius);
+  padding: 14px;
+  min-height: 400px;
+}
+.kanban-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.kanban-count {
+  background: white;
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--gray-400);
+  font-weight: 600;
+  margin-left: auto;
+}
+.kanban-col-todo .kanban-col-head { color: var(--gray-600); }
+.kanban-col-progress .kanban-col-head { color: var(--orange); }
+.kanban-col-done .kanban-col-head { color: #22c55e; }
+
+.task-card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  cursor: grab;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.task-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.task-card.dragging { opacity: 0.5; cursor: grabbing; }
+.task-card.drag-over { border-top: 2px solid var(--orange); }
+.task-card[data-priority="high"] { border-left-color: #ef4444; }
+.task-card[data-priority="medium"] { border-left-color: var(--orange); }
+.task-card[data-priority="low"] { border-left-color: #22c55e; }
+
+.task-card-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--gray-900); }
+.task-card-desc { font-size: 11px; color: var(--gray-400); margin-bottom: 10px; line-height: 1.5; }
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.task-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.tag-fb { background: #dbeafe; color: #1d4ed8; }
+.tag-ig { background: #fce7f3; color: #9d174d; }
+.tag-tiktok { background: #f0fdf4; color: #065f46; }
+.tag-threads { background: var(--gray-100); color: var(--gray-600); }
+.tag-web { background: var(--primary-faint); color: var(--primary); }
+.tag-content { background: #fef3c7; color: #92400e; }
+.tag-agent { background: var(--orange-faint); color: #c14d17; }
+
+.task-assignee {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-task-btn {
+  width: 100%;
+  border: 2px dashed var(--gray-200);
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--gray-400);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+.add-task-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-faint); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  width: 480px;
+  max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--primary); }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 5px; display: block; }
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  color: var(--gray-900);
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.form-textarea { min-height: 80px; resize: vertical; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── FEED / ACTIVITY ── */
+.activity-feed { list-style: none; }
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.activity-text { font-size: 13px; color: var(--gray-600); flex: 1; line-height: 1.5; }
+.activity-text strong { color: var(--gray-900); font-weight: 600; }
+.activity-time { font-size: 11px; color: var(--gray-400); white-space: nowrap; }
+
+/* ── SPARKLINE-STYLE MINI BAR ── */
+.mini-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+}
+.mini-bar {
+  flex: 1;
+  background: var(--primary-faint);
+  border-radius: 3px 3px 0 0;
+  transition: height 0.3s;
+  min-height: 4px;
+}
+.mini-bar.accent { background: var(--orange-faint); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+
+/* ── SECTION TITLE ── */
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gray-200);
+}
+
+/* ── CONNECT BANNER ── */
+.connect-banner {
+  background: var(--primary-faint);
+  border: 1.5px dashed var(--primary);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+.connect-banner .connect-icon { font-size: 18px; }
+
+/* ── METRIC ROW ── */
+.metric-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-100);
+  gap: 10px;
+}
+.metric-row:last-child { border-bottom: none; }
+.metric-row-label { font-size: 12px; color: var(--gray-600); flex: 1; }
+.metric-row-val { font-size: 13px; font-weight: 700; color: var(--gray-900); }
+.metric-row-bar { width: 80px; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--gray-100);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  width: fit-content;
+}
+.tab-btn {
+  padding: 6px 16px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--gray-400);
+  transition: all 0.15s;
+}
+.tab-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow); }
+
+/* ── OVERVIEW QUICK ACTIONS ── */
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--gray-200);
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  transition: all 0.15s;
+}
+.quick-action-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-faint); }
+
+/* ── TOOLTIP ── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gray-900);
+  color: white;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* ── NOTIFICATION DOT ── */
+.notif-dot {
+  width: 8px; height: 8px;
+  background: var(--orange);
+  border-radius: 50%;
+  position: absolute;
+  top: -2px; right: -2px;
+  border: 2px solid var(--primary);
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">NAC<span class="logo-dot">.</span></div>
+    <div class="logo-sub">Command Center</div>
+  </div>
+
+  <div class="sidebar-section">Overview</div>
+  <a class="nav-item active" data-page="overview">
+    <span class="icon">🏠</span> Dashboard
+  </a>
+
+  <div class="sidebar-section">Social</div>
+  <a class="nav-item" data-page="social">
+    <span class="icon">📱</span> All Platforms
+  </a>
+  <a class="nav-item" data-page="facebook">
+    <span class="icon">📘</span> Facebook
+  </a>
+  <a class="nav-item" data-page="instagram">
+    <span class="icon">📸</span> Instagram
+  </a>
+  <a class="nav-item" data-page="threads">
+    <span class="icon">🧵</span> Threads
+  </a>
+  <a class="nav-item" data-page="tiktok">
+    <span class="icon">🎵</span> TikTok
+  </a>
+
+  <div class="sidebar-section">Website</div>
+  <a class="nav-item" data-page="analytics">
+    <span class="icon">📊</span> Analytics
+  </a>
+  <a class="nav-item" data-page="articles">
+    <span class="icon">📝</span> Articles
+  </a>
+
+  <div class="sidebar-section">Cowork</div>
+  <a class="nav-item" data-page="agents">
+    <span class="icon">🤖</span> Agents
+    <span class="nav-badge" id="active-badge">3</span>
+  </a>
+  <a class="nav-item" data-page="tasks">
+    <span class="icon">✅</span> Tasks
+    <span class="nav-badge" id="task-badge">7</span>
+  </a>
+
+  <div class="sidebar-section">Config</div>
+  <a class="nav-item" data-page="settings">
+    <span class="icon">⚙️</span> API Settings
+    <span class="nav-badge" id="settings-badge" style="display:none;background:#ef4444;">!</span>
+  </a>
+
+  <div class="sidebar-footer">
+    <div>NAC v1.0 · May 2026</div>
+    <div style="margin-top:2px;color:#aaa;">Last sync: just now</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="last-updated">Updated <span id="update-time">just now</span></div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
+      <button class="btn btn-orange btn-sm" onclick="openAddTask()">+ New Task</button>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ═══════════════ OVERVIEW PAGE ═══════════════ -->
+    <div id="overview-page" class="page active">
+      <div class="connect-banner">
+        <span class="connect-icon">🔗</span>
+        Connect your social accounts to see live data. Currently showing sample data.
+        <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="nav('settings')">Connect APIs</button>
+      </div>
+
+      <div class="section-title">Key Metrics</div>
+      <div class="stats-grid">
+        <div class="stat-card blue" id="stat-followers">
+          <div class="stat-label">Total Followers</div>
+          <div class="stat-value">48.2K</div>
+          <div class="stat-change up">↑ 3.2% this week</div>
+          <div class="stat-platform">Across all platforms</div>
+        </div>
+        <div class="stat-card orange" id="stat-reach">
+          <div class="stat-label">Total Reach</div>
+          <div class="stat-value">124K</div>
+          <div class="stat-change up">↑ 8.7% this week</div>
+          <div class="stat-platform">7-day rolling</div>
+        </div>
+        <div class="stat-card green" id="stat-visits">
+          <div class="stat-label">Website Visits</div>
+          <div class="stat-value">9,840</div>
+          <div class="stat-change up">↑ 12.1% this week</div>
+          <div class="stat-platform">30-day total</div>
+        </div>
+        <div class="stat-card purple" id="stat-engagement">
+          <div class="stat-label">Engagement Rate</div>
+          <div class="stat-value">4.7%</div>
+          <div class="stat-change down">↓ 0.3% this week</div>
+          <div class="stat-platform">Avg. all platforms</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Active Agents</div>
+          <div class="stat-value">3</div>
+          <div class="stat-change up">2 tasks running</div>
+          <div class="stat-platform">Claude Cowork</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Open Tasks</div>
+          <div class="stat-value">7</div>
+          <div class="stat-change">4 in progress</div>
+          <div class="stat-platform">Task board</div>
+        </div>
+      </div>
+
+      <div class="section-title">Platform Overview</div>
+      <div class="platform-grid">
+        <div class="platform-card">
+          <div class="platform-header fb-bg">
+            <div class="platform-icon">📘</div>
+            <div>
+              <div class="platform-name">Facebook</div>
+              <div class="platform-handle">Page Analytics</div>
+            </div>
+            <span class="status-dot live" style="margin-left:auto;"></span>
+          </div>
+          <div class="platform-body">
+            <div class="platform-metrics">
+              <div class="p-metric"><div class="p-metric-val" id="fb-followers">12.4K</div><div class="p-metric-label">Followers</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="fb-reach">34.2K</div><div class="p-metric-label">Reach</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="fb-eng">5.1%</div><div class="p-metric-label">Engage</div></div>
+            </div>
+            <div class="mini-bars" id="fb-bars"></div>
+            <div class="platform-status">
+              <span><span class="status-dot live"></span>Connected</span>
+              <span>12 posts this month</span>
+            </div>
+          </div>
+        </div>
+        <div class="platform-card">
+          <div class="platform-header ig-bg">
+            <div class="platform-icon">📸</div>
+            <div>
+              <div class="platform-name">Instagram</div>
+              <div class="platform-handle">Business Account</div>
+            </div>
+            <span class="status-dot live" style="margin-left:auto;"></span>
+          </div>
+          <div class="platform-body">
+            <div class="platform-metrics">
+              <div class="p-metric"><div class="p-metric-val" id="ig-followers">18.7K</div><div class="p-metric-label">Followers</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="ig-reach">52.1K</div><div class="p-metric-label">Reach</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="ig-eng">6.3%</div><div class="p-metric-label">Engage</div></div>
+            </div>
+            <div class="mini-bars" id="ig-bars"></div>
+            <div class="platform-status">
+              <span><span class="status-dot live"></span>Connected</span>
+              <span>8 reels this month</span>
+            </div>
+          </div>
+        </div>
+        <div class="platform-card">
+          <div class="platform-header threads-bg">
+            <div class="platform-icon">🧵</div>
+            <div>
+              <div class="platform-name">Threads</div>
+              <div class="platform-handle">Public Thread</div>
+            </div>
+            <span class="status-dot syncing" style="margin-left:auto;"></span>
+          </div>
+          <div class="platform-body">
+            <div class="platform-metrics">
+              <div class="p-metric"><div class="p-metric-val" id="th-followers">6.1K</div><div class="p-metric-label">Followers</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="th-views">18.9K</div><div class="p-metric-label">Views</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="th-eng">3.2%</div><div class="p-metric-label">Engage</div></div>
+            </div>
+            <div class="mini-bars" id="th-bars"></div>
+            <div class="platform-status">
+              <span><span class="status-dot syncing"></span>API pending</span>
+              <span>22 threads this month</span>
+            </div>
+          </div>
+        </div>
+        <div class="platform-card">
+          <div class="platform-header tiktok-bg">
+            <div class="platform-icon">🎵</div>
+            <div>
+              <div class="platform-name">TikTok</div>
+              <div class="platform-handle">Creator Account</div>
+            </div>
+            <span class="status-dot live" style="margin-left:auto;"></span>
+          </div>
+          <div class="platform-body">
+            <div class="platform-metrics">
+              <div class="p-metric"><div class="p-metric-val" id="tt-followers">11.0K</div><div class="p-metric-label">Followers</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="tt-views">89.4K</div><div class="p-metric-label">Views</div></div>
+              <div class="p-metric"><div class="p-metric-val" id="tt-eng">4.2%</div><div class="p-metric-label">Engage</div></div>
+            </div>
+            <div class="mini-bars" id="tt-bars"></div>
+            <div class="platform-status">
+              <span><span class="status-dot live"></span>Connected</span>
+              <span>6 videos this month</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-6040">
+        <div class="panel mb-20">
+          <div class="panel-head">
+            <span>📈</span>
+            <div class="panel-title">Cross-Platform Reach (Last 7 Days)</div>
+          </div>
+          <div class="panel-body">
+            <div class="chart-container"><canvas id="overviewChart"></canvas></div>
+          </div>
+        </div>
+        <div class="panel mb-20">
+          <div class="panel-head">
+            <span>⚡</span>
+            <div class="panel-title">Recent Activity</div>
+          </div>
+          <div class="panel-body no-pad" style="padding: 0 8px;">
+            <ul class="activity-feed" id="activity-feed">
+              <li class="activity-item">
+                <div class="activity-icon" style="background:#dbeafe;">📘</div>
+                <div class="activity-text"><strong>Facebook post</strong> published — "New article on NAC strategies"</div>
+                <div class="activity-time">2m ago</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon" style="background:#fce7f3;">📸</div>
+                <div class="activity-text"><strong>Instagram reel</strong> hit 1,000 views</div>
+                <div class="activity-time">18m ago</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon" style="background:var(--orange-faint);">🤖</div>
+                <div class="activity-text"><strong>Content Agent</strong> completed draft for 3 articles</div>
+                <div class="activity-time">1h ago</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon" style="background:var(--primary-faint);">📊</div>
+                <div class="activity-text"><strong>Website</strong> — Blog post "NAC Guide 2026" got 340 clicks</div>
+                <div class="activity-time">2h ago</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon" style="background:#f0fdf4;">🎵</div>
+                <div class="activity-text"><strong>TikTok video</strong> crossed 10K views</div>
+                <div class="activity-time">3h ago</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon" style="background:#dcfce7;">✅</div>
+                <div class="activity-text"><strong>Task completed</strong> — Social calendar for May finalized</div>
+                <div class="activity-time">4h ago</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Quick Actions</div>
+      <div class="quick-actions">
+        <button class="quick-action-btn" onclick="openAddTask()">✅ New Task</button>
+        <button class="quick-action-btn" onclick="nav('agents')">🤖 View Agents</button>
+        <button class="quick-action-btn" onclick="nav('analytics')">📊 Website Analytics</button>
+        <button class="quick-action-btn" onclick="nav('social')">📱 Social Overview</button>
+        <button class="quick-action-btn" onclick="nav('articles')">📝 Articles</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SOCIAL PAGE ═══════════════ -->
+    <div id="social-page" class="page">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'social-overview')">Overview</button>
+        <button class="tab-btn" onclick="switchTab(this,'social-posts')">Posts</button>
+        <button class="tab-btn" onclick="switchTab(this,'social-audience')">Audience</button>
+      </div>
+
+      <div id="social-overview" class="tab-content">
+        <div class="grid-2 mb-20">
+          <div class="panel">
+            <div class="panel-head"><span>📊</span><div class="panel-title">Engagement by Platform</div></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="engagementChart"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>👥</span><div class="panel-title">Follower Distribution</div></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="followerChart"></canvas></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span>📅</span><div class="panel-title">Daily Reach — All Platforms (Last 30 Days)</div></div>
+          <div class="panel-body"><div class="chart-container tall"><canvas id="reach30Chart"></canvas></div></div>
+        </div>
+      </div>
+
+      <div id="social-posts" class="tab-content" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><span>📋</span><div class="panel-title">Recent Posts</div><button class="btn btn-primary btn-sm" style="margin-left:auto;">+ Schedule Post</button></div>
+          <div class="panel-body no-pad">
+            <table class="data-table">
+              <thead><tr><th>Platform</th><th>Content</th><th>Date</th><th>Reach</th><th>Engagement</th><th>Status</th></tr></thead>
+              <tbody id="posts-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="social-audience" class="tab-content" style="display:none;">
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head"><span>🌍</span><div class="panel-title">Top Locations</div></div>
+            <div class="panel-body">
+              <div id="locations-list"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>👤</span><div class="panel-title">Age & Gender Split</div></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="demographicsChart"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ FACEBOOK PAGE ═══════════════ -->
+    <div id="facebook-page" class="page">
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Page Likes</div><div class="stat-value" id="fb-stat-followers">12,401</div><div class="stat-change up">↑ 142 this week</div></div>
+        <div class="stat-card orange"><div class="stat-label">Post Reach</div><div class="stat-value" id="fb-stat-reach">34,210</div><div class="stat-change up">↑ 8.2%</div></div>
+        <div class="stat-card green"><div class="stat-label">Engaged Users</div><div class="stat-value" id="fb-stat-engaged">78,440</div><div class="stat-change up">↑ 5.4%</div></div>
+        <div class="stat-card purple"><div class="stat-label">Engagement</div><div class="stat-value" id="fb-stat-engrate">5.1%</div><div class="stat-change down">↓ 0.2%</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>📈</span><div class="panel-title">Facebook Page Insights (28 Days)</div></div>
+        <div class="panel-body"><div class="chart-container tall"><canvas id="fbChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ INSTAGRAM PAGE ═══════════════ -->
+    <div id="instagram-page" class="page">
+      <div class="stats-grid">
+        <div class="stat-card pink"><div class="stat-label">Followers</div><div class="stat-value" id="ig-stat-followers">18,742</div><div class="stat-change up">↑ 312 this week</div></div>
+        <div class="stat-card orange"><div class="stat-label">Impressions</div><div class="stat-value" id="ig-stat-impressions">4,120</div><div class="stat-change up">↑ 14%</div></div>
+        <div class="stat-card purple"><div class="stat-label">Reach</div><div class="stat-value" id="ig-stat-reach">52,100</div><div class="stat-change up">↑ 22%</div></div>
+        <div class="stat-card green"><div class="stat-label">Media Count</div><div class="stat-value" id="ig-stat-media">830</div><div class="stat-change up">↑ 9%</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>📈</span><div class="panel-title">Instagram Insights (28 Days)</div></div>
+        <div class="panel-body"><div class="chart-container tall"><canvas id="igChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ THREADS PAGE ═══════════════ -->
+    <div id="threads-page" class="page">
+      <div class="connect-banner">
+        <span class="connect-icon">⚠️</span>
+        Threads API is in limited access. Connect via Meta Business Suite to enable live data.
+        <button class="btn btn-primary btn-sm" style="margin-left:auto;">Connect</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Followers</div><div class="stat-value">6,102</div><div class="stat-change up">↑ 88 this week</div></div>
+        <div class="stat-card orange"><div class="stat-label">Thread Views</div><div class="stat-value">18,900</div><div class="stat-change up">↑ 6%</div></div>
+        <div class="stat-card green"><div class="stat-label">Likes</div><div class="stat-value">2,340</div><div class="stat-change up">↑ 4.2%</div></div>
+        <div class="stat-card purple"><div class="stat-label">Replies</div><div class="stat-value">412</div><div class="stat-change up">↑ 11%</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>📈</span><div class="panel-title">Threads Activity (28 Days)</div></div>
+        <div class="panel-body"><div class="chart-container tall"><canvas id="thChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ TIKTOK PAGE ═══════════════ -->
+    <div id="tiktok-page" class="page">
+      <div class="stats-grid">
+        <div class="stat-card teal"><div class="stat-label">Followers</div><div class="stat-value" id="tt-stat-followers">11,040</div><div class="stat-change up">↑ 420 this week</div></div>
+        <div class="stat-card orange"><div class="stat-label">Video Views</div><div class="stat-value" id="tt-stat-views">89,400</div><div class="stat-change up">↑ 31%</div></div>
+        <div class="stat-card green"><div class="stat-label">Likes</div><div class="stat-value" id="tt-stat-likes">6,800</div><div class="stat-change up">↑ 18%</div></div>
+        <div class="stat-card purple"><div class="stat-label">Shares</div><div class="stat-value" id="tt-stat-shares">1,240</div><div class="stat-change up">↑ 24%</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>📈</span><div class="panel-title">TikTok Analytics (28 Days)</div></div>
+        <div class="panel-body"><div class="chart-container tall"><canvas id="ttChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ANALYTICS PAGE ═══════════════ -->
+    <div id="analytics-page" class="page">
+      <div class="connect-banner">
+        <span class="connect-icon">🔗</span>
+        Connect Google Analytics (GA4) or paste your Measurement ID to enable live website data.
+        <button class="btn btn-primary btn-sm" style="margin-left:auto;">Connect GA4</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Page Views</div><div class="stat-value" id="ga-stat-views">9,840</div><div class="stat-change up">↑ 12.1%</div></div>
+        <div class="stat-card orange"><div class="stat-label">Unique Visitors</div><div class="stat-value" id="ga-stat-visitors">4,120</div><div class="stat-change up">↑ 9.4%</div></div>
+        <div class="stat-card green"><div class="stat-label">Avg. Session</div><div class="stat-value" id="ga-stat-session">3m 42s</div><div class="stat-change up">↑ 0:18</div></div>
+        <div class="stat-card purple"><div class="stat-label">Bounce Rate</div><div class="stat-value" id="ga-stat-bounce">38.2%</div><div class="stat-change down">↑ 1.2%</div></div>
+        <div class="stat-card teal"><div class="stat-label">Article Clicks</div><div class="stat-value">2,890</div><div class="stat-change up">↑ 16%</div></div>
+        <div class="stat-card pink"><div class="stat-label">Conversions</div><div class="stat-value">142</div><div class="stat-change up">↑ 4</div></div>
+      </div>
+      <div class="grid-6040">
+        <div class="panel mb-20">
+          <div class="panel-head"><span>📈</span><div class="panel-title">Traffic (Last 30 Days)</div></div>
+          <div class="panel-body"><div class="chart-container tall"><canvas id="webChart"></canvas></div></div>
+        </div>
+        <div>
+          <div class="panel mb-20">
+            <div class="panel-head"><span>🌐</span><div class="panel-title">Traffic Sources</div></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="sourceChart"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>📍</span><div class="panel-title">Top Pages</div></div>
+            <div class="panel-body no-pad">
+              <table class="data-table">
+                <thead><tr><th>Page</th><th>Views</th><th>Time</th></tr></thead>
+                <tbody>
+                  <tr><td class="bold">/blog/nac-guide-2026</td><td>1,240</td><td>4m 12s</td></tr>
+                  <tr><td class="bold">/home</td><td>980</td><td>2m 5s</td></tr>
+                  <tr><td class="bold">/blog/social-strategy</td><td>720</td><td>5m 30s</td></tr>
+                  <tr><td class="bold">/about</td><td>540</td><td>1m 48s</td></tr>
+                  <tr><td class="bold">/contact</td><td>312</td><td>1m 12s</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ARTICLES PAGE ═══════════════ -->
+    <div id="articles-page" class="page">
+      <div class="panel">
+        <div class="panel-head">
+          <span>📝</span>
+          <div class="panel-title">Articles Performance</div>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openAddTask()">+ Assign to Agent</button>
+        </div>
+        <div class="panel-body no-pad">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Title</th><th>Published</th><th>Views</th><th>Clicks</th><th>Avg. Time</th><th>Status</th></tr></thead>
+            <tbody id="articles-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ AGENTS PAGE ═══════════════ -->
+    <div id="agents-page" class="page">
+      <div class="section-title">Active Agents (3)</div>
+      <div class="agents-grid" id="agents-grid"></div>
+      <div class="section-title" style="margin-top:24px;">All Agents</div>
+      <div class="agents-grid" id="agents-grid-all"></div>
+    </div>
+
+    <!-- ═══════════════ TASKS PAGE ═══════════════ -->
+    <div id="tasks-page" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="tab-bar" style="margin-bottom:0;">
+          <button class="tab-btn active" onclick="filterTasks('all',this)">All</button>
+          <button class="tab-btn" onclick="filterTasks('fb',this)">Facebook</button>
+          <button class="tab-btn" onclick="filterTasks('ig',this)">Instagram</button>
+          <button class="tab-btn" onclick="filterTasks('tiktok',this)">TikTok</button>
+          <button class="tab-btn" onclick="filterTasks('web',this)">Website</button>
+          <button class="tab-btn" onclick="filterTasks('agent',this)">Agent</button>
+        </div>
+        <button class="btn btn-orange btn-sm" style="margin-left:auto;" onclick="openAddTask()">+ New Task</button>
+      </div>
+      <div class="kanban">
+        <div class="kanban-col kanban-col-todo">
+          <div class="kanban-col-head">⬜ To Do <span class="kanban-count" id="todo-count">0</span></div>
+          <div id="col-todo" class="kanban-drop-zone" ondragover="dragOver(event)" ondrop="drop(event,'todo')"></div>
+          <button class="add-task-btn" onclick="openAddTask('todo')">+ Add task</button>
+        </div>
+        <div class="kanban-col kanban-col-progress">
+          <div class="kanban-col-head">🔄 In Progress <span class="kanban-count" id="progress-count">0</span></div>
+          <div id="col-progress" class="kanban-drop-zone" ondragover="dragOver(event)" ondrop="drop(event,'progress')"></div>
+          <button class="add-task-btn" onclick="openAddTask('progress')">+ Add task</button>
+        </div>
+        <div class="kanban-col kanban-col-done">
+          <div class="kanban-col-head">✅ Done <span class="kanban-count" id="done-count">0</span></div>
+          <div id="col-done" class="kanban-drop-zone" ondragover="dragOver(event)" ondrop="drop(event,'done')"></div>
+          <button class="add-task-btn" onclick="openAddTask('done')">+ Add task</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+    <!-- ═══════════════ SETTINGS PAGE ═══════════════ -->
+    <div id="settings-page" class="page">
+      <div class="grid-2">
+        <!-- Worker URL -->
+        <div>
+          <div class="panel mb-20">
+            <div class="panel-head"><span>☁️</span><div class="panel-title">Cloudflare Worker</div></div>
+            <div class="panel-body">
+              <div class="form-group">
+                <label class="form-label">Worker URL</label>
+                <input class="form-input" id="cfg-worker-url" placeholder="https://nac-dashboard-api.YOUR_ACCOUNT.workers.dev" style="font-family:monospace;font-size:12px;">
+                <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">Run <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">wrangler deploy</code> then paste the URL above.</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <button class="btn btn-primary btn-sm" onclick="saveWorkerUrl()">Save URL</button>
+                <button class="btn btn-ghost btn-sm" onclick="testWorker()">Test Connection</button>
+                <span id="worker-test-result" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secret setup guide -->
+          <div class="panel">
+            <div class="panel-head"><span>🔑</span><div class="panel-title">Set Secrets via Wrangler CLI</div></div>
+            <div class="panel-body">
+              <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px;">Run each command once in your terminal inside the project folder. Cloudflare stores them encrypted — they never touch this file.</div>
+              <div id="secrets-guide"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection status -->
+        <div>
+          <div class="panel mb-20">
+            <div class="panel-head">
+              <span>🔌</span>
+              <div class="panel-title">Connection Status</div>
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="checkStatus()">↻ Check</button>
+            </div>
+            <div class="panel-body" id="status-panel">
+              <div style="font-size:12px;color:var(--gray-400);text-align:center;padding:20px 0;">
+                Save your Worker URL and click Check to see connection status.
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><span>📋</span><div class="panel-title">Quick Deploy Steps</div></div>
+            <div class="panel-body">
+              <ol style="font-size:12px;color:var(--gray-600);line-height:2;padding-left:16px;">
+                <li>Install Wrangler: <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">npm i -g wrangler</code></li>
+                <li>Login: <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">wrangler login</code></li>
+                <li>From your project folder: <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">wrangler deploy</code></li>
+                <li>Add each secret: <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">wrangler secret put SECRET_NAME</code></li>
+                <li>Paste your Worker URL above and click Save</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-title">New Task</div>
+    <div class="form-group">
+      <label class="form-label">Task Title</label>
+      <input class="form-input" id="task-title" placeholder="e.g. Write FB post for product launch">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="task-desc" placeholder="Optional details…"></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Platform / Tag</label>
+        <select class="form-select" id="task-tag">
+          <option value="fb">Facebook</option>
+          <option value="ig">Instagram</option>
+          <option value="threads">Threads</option>
+          <option value="tiktok">TikTok</option>
+          <option value="web">Website</option>
+          <option value="content">Content</option>
+          <option value="agent">Agent Task</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select" id="task-priority">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟠 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Assign To Agent</label>
+        <select class="form-select" id="task-agent">
+          <option value="">— Unassigned —</option>
+          <option value="CA">Content Agent</option>
+          <option value="SA">Social Agent</option>
+          <option value="DA">Data Agent</option>
+          <option value="WA">Web Agent</option>
+          <option value="RE">Research Agent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Column</label>
+        <select class="form-select" id="task-col">
+          <option value="todo">To Do</option>
+          <option value="progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-orange" onclick="addTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════
+const pageNames = {
+  overview: 'Dashboard',
+  social: 'Social Media',
+  facebook: 'Facebook Page',
+  instagram: 'Instagram',
+  threads: 'Threads',
+  tiktok: 'TikTok',
+  analytics: 'Website Analytics',
+  articles: 'Articles',
+  agents: 'Agent Hub',
+  tasks: 'Task Board',
+  settings: 'API Settings',
+};
+
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById(page + '-page');
+  if (el) el.classList.add('active');
+  const navEl = document.querySelector(`[data-page="${page}"]`);
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-title').textContent = pageNames[page] || page;
+  window.scrollTo(0,0);
+  setTimeout(() => {
+    initChartsForPage(page);
+    if (page === 'settings') initSettingsPage();
+  }, 50);
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => nav(el.dataset.page));
+});
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+function switchTab(btn, contentId) {
+  const parent = btn.closest('.page');
+  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  parent.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+  btn.classList.add('active');
+  const el = document.getElementById(contentId);
+  if (el) { el.style.display = 'block'; setTimeout(() => initChartsForPage('social'), 50); }
+}
+
+// ═══════════════════════════════════════════════════
+//  DATA (mock — replace with API calls)
+// ═══════════════════════════════════════════════════
+const DAYS7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS30 = Array.from({length:30},(_,i)=>`${i+1}`);
+
+const rand = (min,max) => Math.floor(Math.random()*(max-min)+min);
+const randArr = (n,min,max) => Array.from({length:n},()=>rand(min,max));
+
+const colors = {
+  primary: '#1800ad',
+  orange: '#F4622A',
+  fb: '#1877F2',
+  ig: '#C13584',
+  th: '#555555',
+  tt: '#69C9D0',
+  green: '#22c55e',
+  purple: '#a855f7'
+};
+
+// ═══════════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════════
+const chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function mkChart(id, config) {
+  destroyChart(id);
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  chartInstances[id] = new Chart(canvas, config);
+}
+
+const chartDefaults = {
+  plugins: { legend: { labels: { font: { family: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif', size: 11 } } } },
+  scales: {
+    x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } },
+    y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } }
+  }
+};
+
+const initedPages = new Set();
+
+function initChartsForPage(page) {
+  if (initedPages.has(page)) return;
+  initedPages.add(page);
+
+  if (page === 'overview') {
+    mkChart('overviewChart', {
+      type: 'line',
+      data: {
+        labels: DAYS7,
+        datasets: [
+          { label: 'Facebook', data: randArr(7,2000,8000), borderColor: colors.fb, backgroundColor: colors.fb+'22', tension: 0.4, fill: false },
+          { label: 'Instagram', data: randArr(7,5000,15000), borderColor: colors.ig, backgroundColor: colors.ig+'22', tension: 0.4, fill: false },
+          { label: 'TikTok', data: randArr(7,10000,40000), borderColor: colors.tt, backgroundColor: colors.tt+'22', tension: 0.4, fill: false },
+          { label: 'Website', data: randArr(7,1000,3000), borderColor: colors.primary, backgroundColor: colors.primary+'22', tension: 0.4, fill: false }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+    buildMiniBars('fb-bars', 7, 30, 100);
+    buildMiniBars('ig-bars', 7, 50, 100, true);
+    buildMiniBars('th-bars', 7, 20, 80);
+    buildMiniBars('tt-bars', 7, 40, 100, true);
+  }
+
+  if (page === 'social') {
+    mkChart('engagementChart', {
+      type: 'bar',
+      data: {
+        labels: ['Facebook','Instagram','Threads','TikTok'],
+        datasets: [{
+          label: 'Engagement %',
+          data: [5.1, 6.3, 3.2, 4.2],
+          backgroundColor: [colors.fb, colors.ig, '#555', colors.tt],
+          borderRadius: 8
+        }]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+    mkChart('followerChart', {
+      type: 'doughnut',
+      data: {
+        labels: ['Facebook','Instagram','Threads','TikTok'],
+        datasets: [{ data: [12401, 18742, 6102, 11040], backgroundColor: [colors.fb, colors.ig, '#555', colors.tt], hoverOffset: 8 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 } } } } }
+    });
+    mkChart('reach30Chart', {
+      type: 'line',
+      data: {
+        labels: DAYS30,
+        datasets: [
+          { label: 'Facebook', data: randArr(30,1000,8000), borderColor: colors.fb, tension: 0.3, fill: false, borderWidth: 2 },
+          { label: 'Instagram', data: randArr(30,3000,15000), borderColor: colors.ig, tension: 0.3, fill: false, borderWidth: 2 },
+          { label: 'TikTok', data: randArr(30,5000,40000), borderColor: colors.tt, tension: 0.3, fill: false, borderWidth: 2 }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+    mkChart('demographicsChart', {
+      type: 'bar',
+      data: {
+        labels: ['18-24','25-34','35-44','45-54','55+'],
+        datasets: [
+          { label: 'Male', data: [18,30,22,12,8], backgroundColor: colors.primary+'cc', borderRadius: 4 },
+          { label: 'Female', data: [22,28,20,10,6], backgroundColor: colors.orange+'cc', borderRadius: 4 }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false, scales: { x: { stacked: false }, y: { stacked: false } } }
+    });
+    buildLocations();
+    buildPostsTable();
+  }
+
+  if (page === 'analytics') {
+    mkChart('webChart', {
+      type: 'line',
+      data: {
+        labels: DAYS30,
+        datasets: [
+          { label: 'Page Views', data: randArr(30,200,600), borderColor: colors.primary, backgroundColor: colors.primary+'18', tension: 0.4, fill: true, borderWidth: 2 },
+          { label: 'Unique Visitors', data: randArr(30,80,280), borderColor: colors.orange, backgroundColor: colors.orange+'18', tension: 0.4, fill: true, borderWidth: 2 }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+    mkChart('sourceChart', {
+      type: 'pie',
+      data: {
+        labels: ['Organic Search','Social','Direct','Referral','Email'],
+        datasets: [{ data: [38, 28, 18, 10, 6], backgroundColor: [colors.primary, colors.orange, '#22c55e', '#a855f7', '#14b8a6'], hoverOffset: 6 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 10 } } } } }
+    });
+  }
+
+  if (page === 'facebook') {
+    mkChart('fbChart', {
+      type: 'bar',
+      data: {
+        labels: DAYS30,
+        datasets: [
+          { label: 'Reach', data: randArr(30,500,3000), backgroundColor: colors.fb+'88', borderRadius: 6 },
+          { label: 'Engagement', data: randArr(30,100,500), backgroundColor: colors.orange+'88', borderRadius: 6 }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (page === 'instagram') {
+    mkChart('igChart', {
+      type: 'line',
+      data: {
+        labels: DAYS30,
+        datasets: [
+          { label: 'Reel Views', data: randArr(30,500,5000), borderColor: colors.ig, tension: 0.4, fill: false },
+          { label: 'Story Views', data: randArr(30,200,800), borderColor: colors.orange, tension: 0.4, fill: false }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (page === 'threads') {
+    mkChart('thChart', {
+      type: 'bar',
+      data: {
+        labels: DAYS30,
+        datasets: [{ label: 'Views', data: randArr(30,100,1500), backgroundColor: '#55555588', borderRadius: 6 }]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (page === 'tiktok') {
+    mkChart('ttChart', {
+      type: 'line',
+      data: {
+        labels: DAYS30,
+        datasets: [
+          { label: 'Video Views', data: randArr(30,1000,15000), borderColor: colors.tt, backgroundColor: colors.tt+'20', fill: true, tension: 0.4 },
+          { label: 'Likes', data: randArr(30,100,1500), borderColor: colors.orange, fill: false, tension: 0.4 }
+        ]
+      },
+      options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (page === 'articles') buildArticlesTable();
+  if (page === 'agents') buildAgents();
+  if (page === 'tasks') renderTasks();
+}
+
+// Mini bars for platform cards
+function buildMiniBars(id, n, min, max, isAccent=false) {
+  const container = document.getElementById(id);
+  if (!container) return;
+  const values = Array.from({length:n},()=>rand(min,max));
+  const peak = Math.max(...values);
+  container.innerHTML = values.map(v =>
+    `<div class="mini-bar${isAccent?' accent':''}" style="height:${Math.round((v/peak)*100)}%"></div>`
+  ).join('');
+}
+
+function buildLocations() {
+  const locs = [['Philippines',38],['United States',22],['Indonesia',14],['Malaysia',12],['Others',14]];
+  document.getElementById('locations-list').innerHTML = locs.map(([c,v]) =>
+    `<div class="metric-row">
+      <div class="metric-row-label">${c}</div>
+      <div class="metric-row-bar"><div class="progress-bar"><div class="progress-fill" style="width:${v}%;"></div></div></div>
+      <div class="metric-row-val">${v}%</div>
+    </div>`
+  ).join('');
+}
+
+function buildPostsTable() {
+  const posts = [
+    ['📘','FB','New NAC article drop','May 7','8,200','5.4%','published'],
+    ['📸','IG','Reel: Behind the scenes','May 6','14,100','7.2%','published'],
+    ['🎵','TT','Video: Top 5 tips','May 5','42,000','4.8%','published'],
+    ['🧵','Threads','Thread: Weekly update','May 5','3,200','3.1%','published'],
+    ['📘','FB','Weekend inspiration post','May 3','6,800','4.9%','published'],
+    ['📸','IG','Story: Poll — what next?','May 2','2,100','9.1%','published'],
+  ];
+  document.getElementById('posts-table').innerHTML = posts.map(([ico,plat,title,date,reach,eng,status]) =>
+    `<tr>
+      <td>${ico} <span class="task-tag tag-${plat.toLowerCase()}">${plat}</span></td>
+      <td class="bold">${title}</td><td>${date}</td><td>${reach}</td><td>${eng}</td>
+      <td><span class="task-tag" style="background:#dcfce7;color:#15803d;">${status}</span></td>
+    </tr>`
+  ).join('');
+}
+
+function buildArticlesTable() {
+  const arts = [
+    ['NAC Complete Guide 2026','/blog/nac-guide-2026','May 1','1,240','340','4m 12s','published'],
+    ['Social Strategy for Growth','/blog/social-strategy','Apr 28','720','180','5m 30s','published'],
+    ['How Agents Automate Content','/blog/agent-automation','Apr 22','520','140','3m 45s','published'],
+    ['TikTok for Business: 2026 Tips','/blog/tiktok-business','Apr 18','840','220','4m 00s','published'],
+    ['Instagram Reels Best Practices','/blog/ig-reels','Apr 10','610','150','3m 20s','published'],
+    ['Upcoming: Facebook Ad Changes','draft','—','—','—','—','draft'],
+  ];
+  document.getElementById('articles-table').innerHTML = arts.map(([title,url,pub,views,clicks,time,status],i) =>
+    `<tr>
+      <td>${i+1}</td>
+      <td class="bold">${title}<br><span style="font-size:10px;color:#aaa;">${url}</span></td>
+      <td>${pub}</td><td>${views}</td><td>${clicks}</td><td>${time}</td>
+      <td><span class="task-tag" style="${status==='published'?'background:#dcfce7;color:#15803d;':'background:#fef3c7;color:#92400e;'}">${status}</span></td>
+    </tr>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  AGENTS
+// ═══════════════════════════════════════════════════
+const AGENTS = [
+  { name:'Content Agent', role:'Article & social copy writer', emoji:'✍️', status:'active', task:'Drafting 3 blog articles for May calendar', tasks:3, done:1, pct:33 },
+  { name:'Social Agent', role:'Posts & scheduling manager', emoji:'📱', status:'busy', task:'Scheduling posts across FB, IG, TikTok for week 20', tasks:5, done:4, pct:80 },
+  { name:'Data Agent', role:'Analytics & reporting', emoji:'📊', status:'active', task:'Compiling weekly social performance report', tasks:2, done:1, pct:50 },
+  { name:'Web Agent', role:'Website content & SEO', emoji:'🌐', status:'idle', task:'Waiting for article drafts from Content Agent', tasks:1, done:0, pct:0 },
+  { name:'Research Agent', role:'Trend & competitor analysis', emoji:'🔍', status:'idle', task:'No active task', tasks:0, done:0, pct:0 },
+  { name:'Design Agent', role:'Graphics & visual assets', emoji:'🎨', status:'active', task:'Creating Instagram carousel templates', tasks:4, done:3, pct:75 },
+];
+
+const statusMap = { active:'active', busy:'busy', idle:'idle', error:'error' };
+const badgeMap = { active:'badge-active', busy:'badge-busy', idle:'badge-idle', error:'badge-error' };
+const badgeLbl = { active:'Active', busy:'Busy', idle:'Idle', error:'Error' };
+
+function buildAgents() {
+  const active = AGENTS.filter(a => a.status !== 'idle');
+  const all = AGENTS;
+  document.getElementById('agents-grid').innerHTML = active.map(agentCard).join('');
+  document.getElementById('agents-grid-all').innerHTML = all.map(agentCard).join('');
+}
+
+function agentCard(a) {
+  const colClass = { active:'active-agent', busy:'busy-agent', idle:'idle-agent', error:'error-agent' }[a.status];
+  const fillClass = { active:'green', busy:'orange', idle:'' }[a.status] || '';
+  return `<div class="agent-card ${colClass}">
+    <div class="agent-head">
+      <div class="agent-avatar">${a.emoji}</div>
+      <div>
+        <div class="agent-name">${a.name}</div>
+        <div class="agent-role">${a.role}</div>
+      </div>
+      <span class="agent-status-badge ${badgeMap[a.status]}">${badgeLbl[a.status]}</span>
+    </div>
+    <div class="agent-task">
+      <div class="agent-task-label">Current Task</div>
+      ${a.task}
+    </div>
+    ${a.tasks > 0 ? `
+    <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px;">${a.done}/${a.tasks} tasks complete</div>
+    <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${a.pct}%"></div></div>` : ''}
+    <div class="agent-meta">
+      <span>📋 ${a.tasks} tasks</span>
+      <span>✅ ${a.done} done</span>
+    </div>
+    <div class="agent-actions">
+      <button class="btn btn-primary btn-sm" onclick="openAddTask('progress','${a.name.split(' ')[0][0]}A')">+ Assign Task</button>
+      <button class="btn btn-ghost btn-sm">View Log</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  TASKS / KANBAN
+// ═══════════════════════════════════════════════════
+let tasks = JSON.parse(localStorage.getItem('nac-tasks') || 'null') || [
+  { id:1, title:'Write FB post for product launch', desc:'Announce NAC v2 with key benefits + CTA', tag:'fb', priority:'high', agent:'CA', col:'todo' },
+  { id:2, title:'Create Instagram reel script', desc:'30-sec reel for engagement boost', tag:'ig', priority:'medium', agent:'CA', col:'progress' },
+  { id:3, title:'TikTok trending audio research', desc:'Find top 5 trending audios for week 21', tag:'tiktok', priority:'low', agent:'RE', col:'progress' },
+  { id:4, title:'Publish blog article: NAC Guide 2026', desc:'Final edit and publish on website', tag:'web', priority:'high', agent:'WA', col:'progress' },
+  { id:5, title:'Weekly analytics report', desc:'Compile FB + IG + TikTok + website data', tag:'agent', priority:'medium', agent:'DA', col:'progress' },
+  { id:6, title:'Design May content calendar', desc:'Visual calendar with all post types', tag:'content', priority:'medium', agent:'SA', col:'done' },
+  { id:7, title:'Set up Threads auto-posting', desc:'Configure posting schedule for Threads', tag:'threads', priority:'low', agent:'SA', col:'todo' },
+];
+let nextId = Math.max(...tasks.map(t=>t.id)) + 1;
+let draggedId = null;
+let currentFilter = 'all';
+
+function saveTasks() { localStorage.setItem('nac-tasks', JSON.stringify(tasks)); }
+
+function renderTasks() {
+  const filtered = currentFilter === 'all' ? tasks : tasks.filter(t => t.tag === currentFilter);
+  ['todo','progress','done'].forEach(col => {
+    const colTasks = filtered.filter(t => t.col === col);
+    document.getElementById(`col-${col}`).innerHTML = colTasks.map(taskCardHTML).join('');
+    document.getElementById(`${col}-count`).textContent = colTasks.length;
+  });
+  document.getElementById('task-badge').textContent = tasks.filter(t=>t.col!=='done').length;
+  updateActiveBadge();
+}
+
+function taskCardHTML(t) {
+  const agentName = { CA:'Content', SA:'Social', DA:'Data', WA:'Web', RE:'Research' }[t.agent] || '';
+  return `<div class="task-card" draggable="true" data-id="${t.id}" data-priority="${t.priority}"
+    ondragstart="dragStart(event,${t.id})" ondragend="dragEnd(event)">
+    <div class="task-card-title">${t.title}</div>
+    ${t.desc ? `<div class="task-card-desc">${t.desc}</div>` : ''}
+    <div class="task-card-meta">
+      <span class="task-tag tag-${t.tag}">${t.tag.toUpperCase()}</span>
+      <span class="task-tag" style="background:${t.priority==='high'?'#fee2e2;color:#dc2626':t.priority==='medium'?'#fff7ed;color:#c2410c':'#f0fdf4;color:#15803d'}">${t.priority}</span>
+      ${t.agent ? `<div class="task-assignee" title="${agentName} Agent">${t.agent}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function filterTasks(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('#tasks-page .tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+// Drag & drop
+function dragStart(e, id) {
+  draggedId = id;
+  e.target.classList.add('dragging');
+}
+function dragEnd(e) { e.target.classList.remove('dragging'); draggedId = null; }
+function dragOver(e) { e.preventDefault(); }
+function drop(e, col) {
+  e.preventDefault();
+  if (draggedId === null) return;
+  const task = tasks.find(t => t.id === draggedId);
+  if (task) { task.col = col; saveTasks(); renderTasks(); }
+}
+
+// Modal
+let defaultCol = 'todo';
+let defaultAgent = '';
+
+function openAddTask(col='todo', agent='') {
+  defaultCol = col;
+  defaultAgent = agent;
+  document.getElementById('task-col').value = col;
+  if (agent) document.getElementById('task-agent').value = agent;
+  document.getElementById('task-modal').classList.add('open');
+  document.getElementById('task-title').focus();
+}
+function closeModal() { document.getElementById('task-modal').classList.remove('open'); resetModal(); }
+function resetModal() {
+  ['task-title','task-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('task-priority').value='medium';
+  document.getElementById('task-agent').value='';
+}
+
+function addTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) { document.getElementById('task-title').focus(); return; }
+  const task = {
+    id: nextId++,
+    title,
+    desc: document.getElementById('task-desc').value.trim(),
+    tag: document.getElementById('task-tag').value,
+    priority: document.getElementById('task-priority').value,
+    agent: document.getElementById('task-agent').value,
+    col: document.getElementById('task-col').value
+  };
+  tasks.push(task);
+  saveTasks();
+  closeModal();
+  nav('tasks');
+  setTimeout(renderTasks, 50);
+}
+
+// ═══════════════════════════════════════════════════
+//  LIVE DATA STORE  (populated from Worker)
+// ═══════════════════════════════════════════════════
+let liveData = {}   // keyed by platform: facebook, instagram, threads, tiktok, analytics
+
+// ─── Fetch all from Worker ───────────────────────
+async function fetchFromWorker() {
+  const url = (localStorage.getItem('nac_worker_url') || WORKER_URL).trim().replace(/\/$/, '')
+  if (!url) return
+  try {
+    setTopbarStatus('syncing…')
+    const res = await fetch(`${url}/api/all`, { signal: AbortSignal.timeout(12000) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    liveData = data
+    applyLiveData()
+    setTopbarStatus('just now')
+    hideBanner()
+  } catch (e) {
+    setTopbarStatus('sync failed')
+    console.warn('Worker fetch failed:', e.message)
+  }
+}
+
+function setTopbarStatus(msg) {
+  document.getElementById('update-time').textContent = msg
+}
+
+function hideBanner() {
+  // Hide the "connect APIs" banner if all platforms are live
+  const allOk = Object.values(liveData).every(d => d && !d.error && d._configured !== false)
+  if (allOk) document.querySelectorAll('.connect-banner').forEach(b => b.style.display = 'none')
+}
+
+// ─── Apply real data → stat cards + platform cards ──
+function applyLiveData() {
+  const fb = liveData.facebook  || {}
+  const ig = liveData.instagram || {}
+  const th = liveData.threads   || {}
+  const tt = liveData.tiktok    || {}
+  const ga = liveData.analytics || {}
+
+  // ── Overview stat cards ──────────────────────────
+  const totalFollowers = (fb.followers||0)+(ig.followers||0)+(th.followers||0)+(tt.followers||0)
+  const totalReach     = (fb.reach_7d||0)+(ig.reach_7d||0)+(th.views_7d||0)+(tt.views_recent||0)
+  setCard('stat-followers', fmt(totalFollowers), 'Across all platforms')
+  setCard('stat-reach',     fmt(totalReach),     '7-day rolling')
+  if (ga.page_views_30d) setCard('stat-visits', fmt(ga.page_views_30d), '30-day total')
+  if (ga.bounce_rate)    setCard('stat-bounce',  ga.bounce_rate + '%', 'Bounce rate')
+
+  // ── Platform cards ───────────────────────────────
+  if (fb._configured) {
+    setMetric('fb-followers', fmt(fb.followers))
+    setMetric('fb-reach',     fmt(fb.reach_7d))
+    setMetric('fb-eng',       fb.engagement_rate + '%')
+    if (fb.daily_reach?.length) buildBarData('fb-bars', fb.daily_reach)
+  }
+  if (ig._configured) {
+    setMetric('ig-followers', fmt(ig.followers))
+    setMetric('ig-reach',     fmt(ig.reach_7d))
+    setMetric('ig-eng',       ig.engagement_rate + '%')
+    if (ig.daily_reach?.length) buildBarData('ig-bars', ig.daily_reach)
+  }
+  if (th._configured) {
+    setMetric('th-followers', fmt(th.followers))
+    setMetric('th-views',     fmt(th.views_7d))
+    setMetric('th-eng',       th.engagement_rate + '%')
+  }
+  if (tt._configured) {
+    setMetric('tt-followers', fmt(tt.followers))
+    setMetric('tt-views',     fmt(tt.views_recent))
+    setMetric('tt-eng',       tt.engagement_rate + '%')
+    if (tt.daily_views?.length) buildBarData('tt-bars', tt.daily_views)
+  }
+
+  // ── Facebook detail stats ────────────────────────
+  if (fb._configured) {
+    setStatVal('fb-stat-followers', fmt(fb.followers))
+    setStatVal('fb-stat-reach',     fmt(fb.reach_7d))
+    setStatVal('fb-stat-engaged',   fmt(fb.engaged_7d))
+    setStatVal('fb-stat-engrate',   fb.engagement_rate + '%')
+  }
+  // ── Instagram detail stats ───────────────────────
+  if (ig._configured) {
+    setStatVal('ig-stat-followers', fmt(ig.followers))
+    setStatVal('ig-stat-impressions', fmt(ig.impressions_7d))
+    setStatVal('ig-stat-reach',     fmt(ig.reach_7d))
+    setStatVal('ig-stat-media',     ig.media_count)
+  }
+  // ── TikTok detail stats ──────────────────────────
+  if (tt._configured) {
+    setStatVal('tt-stat-followers', fmt(tt.followers))
+    setStatVal('tt-stat-views',     fmt(tt.views_recent))
+    setStatVal('tt-stat-likes',     fmt(tt.likes_recent))
+    setStatVal('tt-stat-shares',    fmt(tt.shares_recent))
+  }
+  // ── GA4 detail stats ─────────────────────────────
+  if (ga._configured) {
+    setStatVal('ga-stat-views',     fmt(ga.page_views_30d))
+    setStatVal('ga-stat-visitors',  fmt(ga.unique_visitors))
+    setStatVal('ga-stat-session',   ga.avg_session)
+    setStatVal('ga-stat-bounce',    ga.bounce_rate + '%')
+    if (ga.top_pages?.length) buildTopPagesTable(ga.top_pages)
+    if (ga.traffic_sources)   updateSourceChart(ga.traffic_sources)
+  }
+
+  // Re-draw charts if the page is already open
+  const curPage = document.querySelector('.page.active')?.id?.replace('-page','')
+  if (curPage) {
+    initedPages.delete(curPage)
+    initChartsForPage(curPage)
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────
+function fmt(n) {
+  if (!n && n !== 0) return '—'
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M'
+  if (n >= 1000)    return (n/1000).toFixed(1) + 'K'
+  return n.toString()
+}
+
+function setCard(id, val, sub) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const valEl = el.querySelector('.stat-value')
+  const subEl = el.querySelector('.stat-platform')
+  if (valEl) valEl.textContent = val
+  if (subEl && sub) subEl.textContent = sub
+}
+
+function setMetric(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.textContent = val
+}
+
+function setStatVal(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.textContent = val
+}
+
+function buildBarData(containerId, values) {
+  const container = document.getElementById(containerId)
+  if (!container || !values?.length) return
+  const peak = Math.max(...values, 1)
+  container.innerHTML = values.map(v =>
+    `<div class="mini-bar" style="height:${Math.max(4, Math.round((v/peak)*100))}%"></div>`
+  ).join('')
+}
+
+function buildTopPagesTable(pages) {
+  const tbody = document.querySelector('#analytics-page table tbody')
+  if (!tbody || !pages?.length) return
+  tbody.innerHTML = pages.map(p => {
+    const mins = Math.floor(p.avg_duration / 60)
+    const secs = (p.avg_duration % 60).toString().padStart(2,'0')
+    return `<tr><td class="bold">${p.path}</td><td>${fmt(p.views)}</td><td>${mins}m ${secs}s</td></tr>`
+  }).join('')
+}
+
+function updateSourceChart(sources) {
+  const chart = chartInstances['sourceChart']
+  if (!chart) return
+  const labels = Object.keys(sources)
+  const data   = Object.values(sources)
+  const total  = data.reduce((a,b)=>a+b,0)
+  chart.data.labels   = labels
+  chart.data.datasets[0].data = data.map(v => Math.round((v/total)*100))
+  chart.update()
+}
+
+// ═══════════════════════════════════════════════════
+//  SETTINGS PAGE
+// ═══════════════════════════════════════════════════
+const SECRETS_LIST = [
+  { name:'FB_PAGE_ACCESS_TOKEN', label:'Facebook Page Access Token',  platform:'facebook',  hint:'Meta Business Suite → Settings → Page Access Tokens (generate long-lived token)' },
+  { name:'FB_PAGE_ID',           label:'Facebook Page ID',            platform:'facebook',  hint:'Facebook Page → About → Page transparency → Page ID (numeric)' },
+  { name:'IG_USER_ID',           label:'Instagram Business Account ID', platform:'instagram', hint:'Call: graph.facebook.com/{page-id}?fields=instagram_business_account&access_token={token}' },
+  { name:'TIKTOK_ACCESS_TOKEN',  label:'TikTok Access Token',         platform:'tiktok',    hint:'TikTok Developer Portal → apps.tiktok.com → create app, complete OAuth, copy token' },
+  { name:'GA4_PROPERTY_ID',      label:'GA4 Property ID (numeric)',   platform:'analytics', hint:'Google Analytics → Admin → Property → Property Settings → Property ID' },
+  { name:'GA4_CLIENT_EMAIL',     label:'GA4 Service Account Email',   platform:'analytics', hint:'Google Cloud → IAM → Service Accounts → create account → copy client_email from JSON key' },
+  { name:'GA4_PRIVATE_KEY',      label:'GA4 Private Key (PEM)',       platform:'analytics', hint:'Same JSON key → copy private_key value (full PEM with \\n). Then: wrangler secret put GA4_PRIVATE_KEY' },
+]
+
+function buildSecretsGuide() {
+  const el = document.getElementById('secrets-guide')
+  if (!el) return
+  el.innerHTML = SECRETS_LIST.map(s =>
+    `<div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${s.label}</div>
+      <code style="display:block;background:var(--gray-100);padding:7px 10px;border-radius:6px;font-size:11px;color:var(--primary);margin-bottom:3px;">wrangler secret put ${s.name}</code>
+      <div style="font-size:10px;color:var(--gray-400);">${s.hint}</div>
+    </div>`
+  ).join('')
+}
+
+function saveWorkerUrl() {
+  const url = document.getElementById('cfg-worker-url').value.trim().replace(/\/$/, '')
+  if (!url) return
+  localStorage.setItem('nac_worker_url', url)
+  // Update the runtime variable
+  window.WORKER_URL_RUNTIME = url
+  document.getElementById('worker-test-result').innerHTML = '<span style="color:#22c55e;">✓ Saved</span>'
+  setTimeout(fetchFromWorker, 300)
+}
+
+async function testWorker() {
+  const url = (document.getElementById('cfg-worker-url').value.trim() || WORKER_URL).replace(/\/$/, '')
+  const resultEl = document.getElementById('worker-test-result')
+  if (!url) { resultEl.innerHTML = '<span style="color:#ef4444;">Enter a URL first</span>'; return }
+  resultEl.innerHTML = '<span style="color:var(--gray-400);">Testing…</span>'
+  try {
+    const res = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const status = await res.json()
+    resultEl.innerHTML = '<span style="color:#22c55e;">✓ Worker reachable</span>'
+    renderStatusPanel(status)
+  } catch (e) {
+    resultEl.innerHTML = `<span style="color:#ef4444;">✗ ${e.message}</span>`
+  }
+}
+
+async function checkStatus() {
+  const url = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  if (!url) { alert('Save your Worker URL first.'); return }
+  try {
+    const res = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(8000) })
+    const status = await res.json()
+    renderStatusPanel(status)
+  } catch (e) {
+    document.getElementById('status-panel').innerHTML =
+      `<div style="color:#ef4444;font-size:12px;">Could not reach Worker: ${e.message}</div>`
+  }
+}
+
+function renderStatusPanel(status) {
+  const items = [
+    { key:'facebook',  label:'Facebook',  icon:'📘' },
+    { key:'instagram', label:'Instagram', icon:'📸' },
+    { key:'threads',   label:'Threads',   icon:'🧵' },
+    { key:'tiktok',    label:'TikTok',    icon:'🎵' },
+    { key:'analytics', label:'GA4 Analytics', icon:'📊' },
+  ]
+  const connCount = Object.values(status).filter(Boolean).length
+  document.getElementById('settings-badge').style.display = connCount < items.length ? 'inline' : 'none'
+  document.getElementById('status-panel').innerHTML = items.map(item => {
+    const ok = status[item.key]
+    return `<div class="metric-row">
+      <div class="metric-row-label">${item.icon} ${item.label}</div>
+      <div style="font-size:12px;font-weight:700;color:${ok ? '#22c55e' : '#ef4444'}">
+        ${ok ? '✓ Connected' : '✗ Secret missing'}
+      </div>
+    </div>`
+  }).join('')
+}
+
+// Pre-fill saved URL on settings page open
+function initSettingsPage() {
+  const saved = localStorage.getItem('nac_worker_url') || WORKER_URL
+  if (saved) document.getElementById('cfg-worker-url').value = saved
+  buildSecretsGuide()
+}
+
+// ═══════════════════════════════════════════════════
+//  MISC
+// ═══════════════════════════════════════════════════
+function updateActiveBadge() {
+  document.getElementById('active-badge').textContent = AGENTS.filter(a=>a.status!=='idle').length;
+}
+
+function refreshAll() {
+  initedPages.clear()
+  Object.keys(chartInstances).forEach(id => { if(chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } })
+  const currentPage = document.querySelector('.page.active')?.id?.replace('-page','') || 'overview'
+  fetchFromWorker().then(() => initChartsForPage(currentPage))
+  if (!WORKER_URL && !localStorage.getItem('nac_worker_url')) initChartsForPage(currentPage)
+  document.getElementById('update-time').textContent = 'syncing…'
+}
+
+// Close modal on outside click
+document.getElementById('task-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Keyboard: Escape closes modal
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+initChartsForPage('overview');
+renderTasks();
+updateActiveBadge();
+buildMiniBars('fb-bars',7,30,100);
+buildMiniBars('ig-bars',7,50,100,true);
+buildMiniBars('th-bars',7,20,80);
+buildMiniBars('tt-bars',7,40,100,true);
+
+// Load real data from Worker if URL is saved
+if (WORKER_URL || localStorage.getItem('nac_worker_url')) {
+  fetchFromWorker()
+} else {
+  document.getElementById('settings-badge').style.display = 'inline'
+}
+</script>
+</body>
+</html>
