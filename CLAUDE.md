@@ -1,41 +1,27 @@
 # NAC Dashboard — Project Rules
 
-## Architecture (DO NOT CHANGE)
+## Architecture
 
-Two separate Cloudflare Workers serve different purposes:
+| Layer | URL | Purpose |
+|-------|-----|---------|
+| **Frontend** | `rayvtt.github.io/NAC-Dashboard` | GitHub Pages serves `index.html` directly from `main` |
+| **API** | `nac-dashboard.ray-vtt.workers.dev` | Cloudflare Worker — runs `worker.js` |
 
-| Worker | URL | Purpose |
-|--------|-----|---------|
-| `nac-dashboard` | `nac-dashboard.ray-vtt.workers.dev` | **API backend** — runs `worker.js` |
-| `nac-dashboard-ui` | `nac-dashboard-ui.ray-vtt.workers.dev` | **Frontend** — serves `index.html` from GitHub |
+### How it works
+- `index.html` is served by **GitHub Pages** directly from the `main` branch root. No Cloudflare worker involved.
+- Changes to `index.html` pushed to `main` go live in ~30 seconds automatically.
+- `worker.js` is the API backend. It is deployed via GitHub Actions when `worker.js` or `wrangler.toml` changes.
 
 ### CRITICAL RULES
-
-1. **`wrangler.toml` must always have `name = "nac-dashboard"`** — NEVER change it to `nac-dashboard-ui`. GitHub Actions deploys `worker.js` using this name. Changing it will overwrite the frontend with API code and break the dashboard.
-
-2. **`nac-dashboard-ui` is NOT deployed from GitHub.** It's a simple Cloudflare Worker configured manually via the Cloudflare editor. Its only job is to fetch `index.html` from GitHub raw. Never deploy to it via wrangler or GitHub Actions.
-
-3. **If `nac-dashboard-ui` breaks** (shows JSON like `{"error":"Not found"}` instead of the dashboard), fix it by going to Cloudflare → Workers & Pages → `nac-dashboard-ui` → Edit code → replace ALL code with:
-```javascript
-export default {
-  async fetch(request) {
-    const resp = await fetch(
-      'https://raw.githubusercontent.com/rayvtt/NAC-Dashboard/main/index.html',
-      { cf: { cacheTtl: 300 } }
-    );
-    return new Response(resp.body, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
-  }
-};
-```
-Then click Deploy.
+1. **`wrangler.toml` must always have `name = "nac-dashboard"`** — this deploys the API worker only.
+2. **Do NOT create or use a `nac-dashboard-ui` Cloudflare Worker** — it is no longer part of the architecture.
+3. **Never change the GitHub Pages source** — it should always be `main` branch, `/ (root)`.
 
 ## File Roles
 
-- `index.html` — Dashboard frontend (all pages, JS, CSS). Changes auto-appear within 5 min after push.
-- `worker.js` — API backend (social APIs, agents, blog tracking, lead gen, Notion CRM). Auto-deployed via GitHub Actions on push.
-- `wrangler.toml` — Worker config. **Name must stay `nac-dashboard`.**
+- `index.html` — Dashboard frontend (all pages, JS, CSS). Push to main → live in ~30s via GitHub Pages.
+- `worker.js` — API backend (social APIs, agents, blog tracking, lead gen, Notion CRM). Auto-deployed via GitHub Actions.
+- `wrangler.toml` — Cloudflare Worker config. Name must stay `nac-dashboard`.
 - `.github/workflows/deploy-worker.yml` — Deploys `worker.js` to Cloudflare on push to main.
 
 ## GitHub Repo
@@ -57,7 +43,7 @@ Still needed:
 
 ## Brand
 
-- Colors: `#1800ad` (primary blue-purple) + `#F4622A` (Claude orange) + white
+- Colors: `#1800ad` (primary blue-purple) + `#F4622A` (orange) + white
 - Site: nomadassetcollective.com
 - Blog: blog.nomadassetcollective.com
 
