@@ -6,6 +6,8 @@ on:
     paths:
       - 'worker.js'
       - 'wrangler.toml'
+      - 'ui-worker.js'
+      - 'wrangler-ui.toml'
 
 jobs:
   deploy:
@@ -13,7 +15,15 @@ jobs:
     name: Deploy Worker
     steps:
       - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
+      - name: Deploy API worker (nac-dashboard)
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml
+      - name: Deploy UI worker (nac-dashboard-ui)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler-ui.toml
