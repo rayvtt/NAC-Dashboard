@@ -1612,8 +1612,10 @@ body {
     <!-- ═══════════════ AGENTS PAGE ═══════════════ -->
     <div id="agents-page" class="page">
 
-      <!-- Agent Status Bar -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px;" id="agent-status-bar"></div>
+      <!-- Agent Status Bar (repos) -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:20px;" id="agent-status-bar">
+        <div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);grid-column:1/-1;">Loading repos…</div>
+      </div>
 
       <!-- Command Prompt -->
       <div class="panel mb-20" id="run-task-panel">
@@ -1625,15 +1627,9 @@ body {
         <div class="panel-body">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Agent</label>
+              <label class="form-label">Agent (Repo)</label>
               <select class="form-select" id="run-agent-select" onchange="updateTemplates()">
-                <option value="leadgen">🎯 Lead Gen</option>
-                <option value="content">✍️ Content</option>
-                <option value="social">📱 Social</option>
-                <option value="data">📊 Data</option>
-                <option value="web">🌐 Web</option>
-                <option value="research">🔍 Research</option>
-                <option value="design">🎨 Design</option>
+                <option value="">Loading repos…</option>
               </select>
             </div>
             <div class="form-group" style="margin:0">
@@ -1680,13 +1676,6 @@ body {
           <div class="panel-title">Task Log</div>
           <select id="log-agent-filter" onchange="loadTaskHistory()" style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid var(--gray-200);font-size:11px;">
             <option value="">All Agents</option>
-            <option value="leadgen">🎯 Lead Gen</option>
-            <option value="content">✍️ Content</option>
-            <option value="social">📱 Social</option>
-            <option value="data">📊 Data</option>
-            <option value="web">🌐 Web</option>
-            <option value="research">🔍 Research</option>
-            <option value="design">🎨 Design</option>
           </select>
           <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="loadTaskHistory()">↻ Refresh</button>
         </div>
@@ -2028,15 +2017,9 @@ body {
   <div class="modal" style="max-width:460px;">
     <div class="modal-title">⏰ Schedule Agent Task</div>
     <div class="form-group">
-      <label class="form-label">Agent</label>
+      <label class="form-label">Agent (Repo)</label>
       <select class="form-select" id="sched-agent">
-        <option value="leadgen">🎯 Lead Gen</option>
-        <option value="content">✍️ Content</option>
-        <option value="social">📱 Social</option>
-        <option value="data">📊 Data</option>
-        <option value="web">🌐 Web</option>
-        <option value="research">🔍 Research</option>
-        <option value="design">🎨 Design</option>
+        <option value="">Loading repos…</option>
       </select>
     </div>
     <div class="form-group">
@@ -2448,7 +2431,7 @@ function initChartsForPage(page) {
   }
 
   if (page === 'articles') buildArticlesTable();
-  if (page === 'agents') { updateTemplates(); loadTaskHistory(); loadSchedules(); }
+  if (page === 'agents') { fetchRepos(); loadTaskHistory(); loadSchedules(); }
   if (page === 'tasks') renderTasks();
 }
 
@@ -2512,92 +2495,122 @@ function buildArticlesTable() {
 }
 
 // ═══════════════════════════════════════════════════
-//  AGENTS — Command Center
+//  AGENTS — Repo-Based Command Center
 // ═══════════════════════════════════════════════════
-const AGENT_META = {
-  leadgen:  { emoji:'🎯', name:'Lead Gen',  role:'Vietnamese outreach' },
-  content:  { emoji:'✍️', name:'Content',   role:'Articles & copy' },
-  social:   { emoji:'📱', name:'Social',    role:'Posts & scheduling' },
-  data:     { emoji:'📊', name:'Data',      role:'Analytics & reports' },
-  web:      { emoji:'🌐', name:'Web',       role:'SEO & site content' },
-  research: { emoji:'🔍', name:'Research',  role:'Trends & competitors' },
-  design:   { emoji:'🎨', name:'Design',    role:'Visual assets & briefs' },
-}
 
-const TASK_TEMPLATES = {
-  leadgen: [
-    { label:'Generate lead outreach', task:'Generate personalized outreach messages for a new lead' },
-  ],
-  content: [
-    { label:'Write blog post', task:'Write a 600-word blog post about [topic] for blog.nomadassetcollective.com' },
-    { label:'3 IG captions', task:'Write 3 Instagram captions for [topic], include hashtags and CTA' },
-    { label:'Email newsletter', task:'Draft this week\'s email newsletter highlighting recent blog posts and listings' },
-  ],
-  social: [
-    { label:'Weekly content calendar', task:'Create a 7-day content calendar for Facebook, Instagram, and TikTok' },
-    { label:'Hashtag strategy', task:'Research and suggest 30 relevant hashtags for NAC real estate content' },
-    { label:'Engagement plan', task:'Create a daily engagement plan: comments, stories, community interaction' },
-  ],
-  data: [
-    { label:'Weekly performance report', task:'Compile a weekly social media performance report with key metrics and trends' },
-    { label:'Competitor analysis', task:'Analyze competitor social accounts and benchmark against NAC metrics' },
-    { label:'Monthly growth summary', task:'Summarize monthly growth across all platforms with actionable recommendations' },
-  ],
-  web: [
-    { label:'SEO audit', task:'Audit the top 5 blog posts for SEO: titles, meta descriptions, headings, keywords' },
-    { label:'Meta descriptions', task:'Write SEO-optimized meta descriptions for the latest 5 blog posts' },
-    { label:'Content structure', task:'Suggest internal linking and content structure improvements for the blog' },
-  ],
-  research: [
-    { label:'Market trends', task:'Research current real estate investment trends in Southeast Asia' },
-    { label:'Content opportunities', task:'Identify trending topics and content gaps in luxury real estate social media' },
-    { label:'Audience insights', task:'Research target audience demographics and content preferences for NAC' },
-  ],
-  design: [
-    { label:'IG carousel brief', task:'Create a design brief for a 5-slide Instagram carousel about [topic]' },
-    { label:'TikTok thumbnail', task:'Create design briefs for 3 TikTok video thumbnails' },
-    { label:'Brand asset specs', task:'Spec out banner designs for Facebook cover, IG story, and email header' },
-  ],
+// Repo emoji map — auto-assigned by name pattern
+const REPO_EMOJI = {
+  'NAC-Dashboard':                '🎛️',
+  'Nac-Property-Hub-Listing-PDP': '🏠',
+  'NAC-Program-Brochures':        '📑',
+  'NAC-homepage-revamp':          '🏡',
+  'nomnom':                       '🍜',
+  'EAM':                          '📰',
 }
+function repoEmoji(name) { return REPO_EMOJI[name] || '💻' }
+
+// Universal templates — work for any repo
+const TASK_TEMPLATES_UNIVERSAL = [
+  { label:'Review recent changes',    task:'Review the latest commits and summarize what changed, any issues, and next steps' },
+  { label:'Plan next feature',        task:'Suggest the next high-impact feature to build, with implementation plan' },
+  { label:'Fix bug',                  task:'Debug and suggest a fix for: [describe the bug]' },
+  { label:'Write documentation',      task:'Write clear documentation for the current project structure and setup' },
+  { label:'Code quality audit',       task:'Audit the codebase for code quality, performance, and security issues' },
+  { label:'Content strategy',         task:'Create a content strategy aligned with this project\'s goals' },
+  { label:'SEO & performance check',  task:'Analyze SEO and performance, suggest top 5 improvements' },
+  { label:'Competitive analysis',     task:'Research competitors in this space and suggest differentiators' },
+]
 
 let _allTasksCache = []
+let _reposCache = []
+
+async function fetchRepos() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  if (!workerUrl) return
+  try {
+    const res = await fetch(`${workerUrl}/api/github/repos`)
+    const data = await res.json()
+    _reposCache = data.repos || []
+    populateAgentSelects()
+    buildAgentStatusBar(_allTasksCache)
+  } catch (e) {
+    console.warn('Failed to fetch repos:', e.message)
+    // Fallback: populate with known repos
+    _reposCache = [
+      { id:'NAC-Dashboard', name:'NAC-Dashboard', description:'All about NAC activities', language:'HTML', updated:'' },
+      { id:'Nac-Property-Hub-Listing-PDP', name:'Nac-Property-Hub-Listing-PDP', description:'', language:'HTML', updated:'' },
+      { id:'NAC-Program-Brochures', name:'NAC-Program-Brochures', description:'', language:'HTML', updated:'' },
+      { id:'NAC-homepage-revamp', name:'NAC-homepage-revamp', description:'', language:'HTML', updated:'' },
+      { id:'nomnom', name:'nomnom', description:'', language:'HTML', updated:'' },
+      { id:'EAM', name:'EAM', description:'Article and Engagement management for Esquire', language:'JavaScript', updated:'' },
+    ]
+    populateAgentSelects()
+  }
+}
+
+function populateAgentSelects() {
+  const opts = _reposCache.map(r =>
+    `<option value="${r.id}">${repoEmoji(r.name)} ${r.name}</option>`
+  ).join('')
+
+  // Main agent select
+  const sel = document.getElementById('run-agent-select')
+  if (sel) sel.innerHTML = opts
+
+  // Schedule modal select
+  const schedSel = document.getElementById('sched-agent')
+  if (schedSel) schedSel.innerHTML = opts
+
+  // Log filter
+  const logFilter = document.getElementById('log-agent-filter')
+  if (logFilter) {
+    logFilter.innerHTML = '<option value="">All Agents</option>' + opts
+  }
+
+  updateTemplates()
+}
 
 function updateTemplates() {
-  const agentId = document.getElementById('run-agent-select').value
   const tpl = document.getElementById('task-template')
-  const templates = TASK_TEMPLATES[agentId] || []
+  if (!tpl) return
   tpl.innerHTML = '<option value="">— Custom task —</option>' +
-    templates.map((t, i) => `<option value="${i}">${t.label}</option>`).join('')
+    TASK_TEMPLATES_UNIVERSAL.map((t, i) => `<option value="${i}">${t.label}</option>`).join('')
 }
 
 function applyTemplate() {
-  const agentId = document.getElementById('run-agent-select').value
   const idx = document.getElementById('task-template').value
   if (idx === '') return
-  const templates = TASK_TEMPLATES[agentId] || []
-  const t = templates[parseInt(idx)]
+  const t = TASK_TEMPLATES_UNIVERSAL[parseInt(idx)]
   if (t) document.getElementById('run-agent-task').value = t.task
 }
 
 function buildAgentStatusBar(tasks) {
   const bar = document.getElementById('agent-status-bar')
   if (!bar) return
-  bar.innerHTML = Object.entries(AGENT_META).map(([id, m]) => {
-    const agentTasks = (tasks || []).filter(t => t.agentId === id)
+  if (!_reposCache.length) {
+    bar.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);grid-column:1/-1;">Loading repos…</div>'
+    return
+  }
+  bar.innerHTML = _reposCache.map(r => {
+    const emoji = repoEmoji(r.name)
+    const agentTasks = (tasks || []).filter(t => t.agentId === r.id)
     const total = agentTasks.length
     const lastTask = agentTasks[0]
-    const doneCount = agentTasks.filter(t => t.status === 'done').length
     const errCount = agentTasks.filter(t => t.status === 'error').length
     const statusColor = !lastTask ? 'var(--gray-300)' : lastTask.status === 'done' ? '#22c55e' : lastTask.status === 'error' ? '#ef4444' : '#f59e0b'
-    const lastTime = lastTask ? timeAgo(lastTask.created) : 'No runs'
-    return `<div style="background:var(--gray-50);border-radius:10px;padding:12px;cursor:pointer;border:1px solid var(--gray-100);transition:all 0.2s;" onclick="document.getElementById('run-agent-select').value='${id}';updateTemplates();" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--gray-100)'">
+    const lastTime = lastTask ? timeAgo(lastTask.created) : (r.updated ? timeAgo(r.updated) : 'No activity')
+    const lang = r.language ? `<span style="font-size:9px;color:var(--gray-400);background:var(--gray-100);padding:1px 5px;border-radius:4px;">${r.language}</span>` : ''
+    return `<div style="background:var(--gray-50);border-radius:10px;padding:12px;cursor:pointer;border:1px solid var(--gray-100);transition:all 0.2s;" onclick="document.getElementById('run-agent-select').value='${r.id}';updateTemplates();" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--gray-100)'">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-        <span style="font-size:18px;">${m.emoji}</span>
-        <span style="font-weight:600;font-size:12px;">${m.name}</span>
-        <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};margin-left:auto;"></span>
+        <span style="font-size:18px;">${emoji}</span>
+        <span style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</span>
+        <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};margin-left:auto;flex-shrink:0;"></span>
       </div>
       <div style="font-size:10px;color:var(--gray-400);">${lastTime}</div>
-      <div style="font-size:10px;color:var(--gray-500);margin-top:2px;">${total} runs${errCount ? ` · ${errCount} err` : ''}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        ${lang}
+        <span style="font-size:10px;color:var(--gray-500);">${total} runs${errCount ? ` · ${errCount} err` : ''}</span>
+      </div>
     </div>`
   }).join('')
 }
@@ -2650,9 +2663,8 @@ async function loadSchedules() {
     el.innerHTML = `<table class="data-table">
       <thead><tr><th>Agent</th><th>Task</th><th>Frequency</th><th>Last Run</th><th></th></tr></thead>
       <tbody>${data.schedules.map(s => {
-        const m = AGENT_META[s.agentId] || { emoji:'🤖', name:s.agentId }
         return `<tr>
-          <td>${m.emoji} ${m.name}</td>
+          <td style="font-size:11px;">${repoEmoji(s.agentId)} ${s.agentId}</td>
           <td class="bold" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.task}</td>
           <td style="font-size:11px;">${s.freq}${s.day ? ' / ' + s.day : ''}</td>
           <td style="font-size:11px;">${s.lastRun ? timeAgo(s.lastRun) : 'Never'}</td>
@@ -3111,13 +3123,9 @@ async function runAgentTask() {
   }
 
   // Show output panel
-  const agentLabels = {
-    content:'✍️ Content Agent', social:'📱 Social Agent', data:'📊 Data Agent',
-    web:'🌐 Web Agent', research:'🔍 Research Agent', design:'🎨 Design Agent'
-  }
-  const [emoji, ...nameParts] = agentLabels[agentId].split(' ')
+  const emoji = repoEmoji(agentId)
   document.getElementById('output-agent-emoji').textContent  = emoji
-  document.getElementById('output-agent-name').textContent   = nameParts.join(' ')
+  document.getElementById('output-agent-name').textContent   = agentId
   document.getElementById('output-task-label').textContent   = `Task: ${task}`
   document.getElementById('output-status-badge').textContent = 'Running…'
   document.getElementById('output-status-badge').className   = 'agent-status-badge badge-busy'
@@ -3186,12 +3194,10 @@ function copyOutput() {
 }
 
 function sendToTask(agentId, task) {
-  const agentMap = { content:'CA', social:'SA', data:'DA', web:'WA', research:'RE', design:'DG' }
-  const tagMap   = { content:'content', social:'fb', data:'agent', web:'web', research:'agent', design:'ig' }
-  openAddTask('todo', agentMap[agentId] || '')
+  openAddTask('todo', '')
   setTimeout(() => {
-    document.getElementById('task-title').value = task.slice(0, 80)
-    document.getElementById('task-tag').value   = tagMap[agentId] || 'agent'
+    document.getElementById('task-title').value = `[${agentId}] ${task}`.slice(0, 80)
+    document.getElementById('task-tag').value   = 'agent'
   }, 50)
 }
 
@@ -3226,7 +3232,7 @@ async function loadTaskHistory() {
       <thead><tr><th>Agent</th><th>Task</th><th>Status</th><th>Tokens</th><th>Time</th><th></th></tr></thead>
       <tbody>${tasks.map(t => `
         <tr>
-          <td style="white-space:nowrap;">${t.agentEmoji} ${t.agentName?.split(' ')[0] || ''}</td>
+          <td style="white-space:nowrap;font-size:11px;">${repoEmoji(t.agentId)} ${t.agentId}</td>
           <td class="bold" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.task}</td>
           <td><span class="agent-status-badge ${t.status === 'done' ? 'badge-active' : t.status === 'running' ? 'badge-busy' : 'badge-error'}" style="font-size:10px;">${t.status}</span></td>
           <td style="font-size:10px;color:var(--gray-400);">${t.tokens ? (t.tokens.input + t.tokens.output) : '—'}</td>

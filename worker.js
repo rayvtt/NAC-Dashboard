@@ -24,6 +24,8 @@
  *   NAC_AGENTS             Stores agent task state + history
  */
 
+const GITHUB_USER  = 'rayvtt'
+const GITHUB_API   = 'https://api.github.com'
 const GRAPH        = 'https://graph.facebook.com/v19.0'
 const THREADS_GRAPH = 'https://graph.threads.net/v1.0'
 const TIKTOK       = 'https://open.tiktokapis.com/v2'
@@ -149,6 +151,9 @@ export default {
       if (pathname === '/api/analytics') return json(await getAnalytics(env))
       if (pathname === '/api/all')       return json(await getAll(env))
 
+      // ── GitHub Repos (Agents) ──
+      if (pathname === '/api/github/repos') return json(await getGitHubRepos(env))
+
       // ── Blog Analytics ──
       if (pathname === '/api/track' && request.method === 'POST') {
         const text = await request.text()
@@ -221,8 +226,22 @@ async function runAgent(request, env) {
 
   if (!agentId || !task) throw new Error('agentId and task are required')
 
-  const persona = AGENT_PERSONAS[agentId]
-  if (!persona) throw new Error(`Unknown agent: ${agentId}`)
+  // Support both legacy personas and repo-based agents
+  let persona = AGENT_PERSONAS[agentId]
+  if (!persona) {
+    // Treat agentId as a repo name — build dynamic persona
+    persona = {
+      name: agentId,
+      emoji: '💻',
+      system: `You are an agent working on the "${agentId}" repository for Nomad Asset Collective (NAC).
+Repository: github.com/${GITHUB_USER}/${agentId}
+NAC is a premium real estate and lifestyle brand. Website: nomadassetcollective.com | Blog: blog.nomadassetcollective.com
+Brand colors: #1800ad (deep blue-purple), #F4622A (orange), white.
+
+You assist with code, content, planning, debugging, documentation, and any project tasks for this specific repository.
+Be concise, actionable, and produce ready-to-use output.`,
+    }
+  }
 
   // Build task ID and initial state
   const taskId  = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -788,6 +807,43 @@ async function getGA4Token(env) {
   const { access_token, error } = await res.json()
   if (!access_token) throw new Error(`GA4 token error: ${error}`)
   return access_token
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GITHUB REPOS → AGENTS
+// ─────────────────────────────────────────────────────────────────────────────
+async function getGitHubRepos(env) {
+  // Check KV cache first (5 min TTL)
+  if (env.NAC_AGENTS) {
+    const cached = await env.NAC_AGENTS.get('__github_repos__')
+    if (cached) return JSON.parse(cached)
+  }
+
+  const res = await fetch(`${GITHUB_API}/users/${GITHUB_USER}/repos?sort=updated&per_page=30`, {
+    headers: { 'User-Agent': 'NAC-Dashboard/1.0', Accept: 'application/vnd.github.v3+json' },
+  })
+  if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
+  const raw = await res.json()
+
+  const repos = raw.map(r => ({
+    id:          r.name,
+    name:        r.name,
+    description: r.description || '',
+    language:    r.language || '',
+    updated:     r.updated_at,
+    url:         r.html_url,
+    stars:       r.stargazers_count,
+    open_issues: r.open_issues_count,
+  }))
+
+  const result = { repos, fetched: new Date().toISOString() }
+
+  // Cache for 5 minutes
+  if (env.NAC_AGENTS) {
+    await env.NAC_AGENTS.put('__github_repos__', JSON.stringify(result), { expirationTtl: 300 })
+  }
+
+  return result
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
