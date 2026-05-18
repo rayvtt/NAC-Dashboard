@@ -581,7 +581,7 @@ async function getStatus(env) {
     analytics: !!(env.GA4_PROPERTY_ID && env.GA4_CLIENT_EMAIL && env.GA4_PRIVATE_KEY),
     agents:    !!(env.ANTHROPIC_API_KEY),
     kv:        !!(env.NAC_AGENTS),
-    blog:      !!(env.NAC_AGENTS),
+    blog:      !!(env.GA4_PROPERTY_ID && env.GA4_CLIENT_EMAIL && env.GA4_PRIVATE_KEY),
     notion:    !!(env.NOTION_API_TOKEN),
   }
 }
@@ -952,61 +952,127 @@ async function handleTrack(event, env) {
 }
 
 async function getBlogStats(url, env) {
-  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
-
-  const numDays = parseInt(url.searchParams.get('days') || '7')
-  const idxRaw = await env.NAC_AGENTS.get('blog:days')
-  const allDays = idxRaw ? JSON.parse(idxRaw) : []
-  const targetDays = allDays.slice(-numDays)
-
-  const dailyData = (await Promise.all(
-    targetDays.map(d => env.NAC_AGENTS.get(`blog:daily:${d}`).then(r => r ? { date: d, ...JSON.parse(r) } : null))
-  )).filter(Boolean)
-
-  let views = 0, clicks = 0, hovers = 0, bounces = 0, totalTime = 0, scrollSum = 0, scrollCount = 0
-  const allSids = new Set()
-  const pageAgg = {}
-  const refAgg = {}
-  const dvArr = []
-  const duArr = []
-  const recentClicks = []
-  const recentHovers = []
-
-  for (const d of dailyData) {
-    views += d.v; clicks += d.c; hovers += d.h; bounces += d.b
-    totalTime += d.t; scrollSum += d.ss || 0; scrollCount += d.sc || 0
-    ;(d.u || []).forEach(s => allSids.add(s))
-    dvArr.push(d.v)
-    duArr.push((d.u || []).length)
-
-    for (const [p, s] of Object.entries(d.pages || {})) {
-      if (!pageAgg[p]) pageAgg[p] = { views: 0, clicks: 0, time: 0, count: 0 }
-      pageAgg[p].views += s.v || 0
-      pageAgg[p].clicks += s.c || 0
-      pageAgg[p].time += s.t || 0
-      pageAgg[p].count += s.n || 0
-    }
-    for (const [r, c] of Object.entries(d.refs || {})) refAgg[r] = (refAgg[r] || 0) + c
-    recentClicks.push(...(d.clicks || []))
-    recentHovers.push(...(d.hovers || []))
+  if (!env.GA4_PROPERTY_ID || !env.GA4_CLIENT_EMAIL || !env.GA4_PRIVATE_KEY) {
+    return { error: 'GA4 not configured' }
   }
 
-  const topPages = Object.entries(pageAgg)
-    .sort((a, b) => b[1].views - a[1].views).slice(0, 10)
-    .map(([path, s]) => ({ path, views: s.views, clicks: s.clicks, avgTime: s.count > 0 ? Math.round(s.time / s.count) : 0 }))
+  const numDays = parseInt(url.searchParams.get('days') || '30')
+  const token   = await getGA4Token(env)
+  const propId  = env.GA4_PROPERTY_ID
 
-  const leaveCount = scrollCount || 1
+  const ga4Post = (body) =>
+    fetch(`${GA4}/properties/${propId}:runReport`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json())
+
+  const blogFilter = {
+    filter: { fieldName: 'hostName', stringFilter: { value: 'blog.nomadassetcollective.com' } }
+  }
+
+  const [dailyReport, pagesReport, sourcesReport, clicksReport] = await Promise.all([
+    // Daily views + visitors + bounce + duration
+    ga4Post({
+      dateRanges: [{ startDate: `${numDays}daysAgo`, endDate: 'today' }],
+      dimensionFilter: blogFilter,
+      dimensions: [{ name: 'date' }],
+      metrics: [
+        { name: 'screenPageViews' },
+        { name: 'activeUsers' },
+        { name: 'bounceRate' },
+        { name: 'averageSessionDuration' },
+      ],
+      orderBys: [{ dimension: { dimensionName: 'date' } }],
+    }),
+    // Top pages
+    ga4Post({
+      dateRanges: [{ startDate: `${numDays}daysAgo`, endDate: 'today' }],
+      dimensionFilter: blogFilter,
+      dimensions: [{ name: 'pagePath' }],
+      metrics: [
+        { name: 'screenPageViews' },
+        { name: 'averageSessionDuration' },
+        { name: 'activeUsers' },
+      ],
+      orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      limit: 10,
+    }),
+    // Traffic sources
+    ga4Post({
+      dateRanges: [{ startDate: `${numDays}daysAgo`, endDate: 'today' }],
+      dimensionFilter: blogFilter,
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'sessions' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    }),
+    // Click events (GA4 enhanced measurement)
+    ga4Post({
+      dateRanges: [{ startDate: `${numDays}daysAgo`, endDate: 'today' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            { filter: { fieldName: 'hostName', stringFilter: { value: 'blog.nomadassetcollective.com' } } },
+            { filter: { fieldName: 'eventName', stringFilter: { value: 'click' } } },
+          ]
+        }
+      },
+      dimensions: [{ name: 'pagePath' }, { name: 'linkUrl' }],
+      metrics: [{ name: 'eventCount' }],
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 30,
+    }),
+  ])
+
+  // Parse daily data
+  const dailyRows = dailyReport.rows || []
+  const dates = dailyRows.map(r => {
+    const d = r.dimensionValues[0].value
+    return `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`
+  })
+  const dailyViews    = dailyRows.map(r => parseInt(r.metricValues[0].value) || 0)
+  const dailyVisitors = dailyRows.map(r => parseInt(r.metricValues[1].value) || 0)
+
+  const totalViews    = dailyViews.reduce((a, b) => a + b, 0)
+  const uniqueVisitors = dailyVisitors.reduce((a, b) => a + b, 0)
+
+  const lastRow      = dailyRows[dailyRows.length - 1]
+  const bounceRate   = lastRow ? +(parseFloat(lastRow.metricValues[2].value) * 100).toFixed(1) : 0
+  const avgDuration  = lastRow ? parseInt(lastRow.metricValues[3].value) : 0
+
+  // Parse top pages
+  const topPages = (pagesReport.rows || []).slice(0, 10).map(r => ({
+    path:    r.dimensionValues[0].value,
+    views:   parseInt(r.metricValues[0].value) || 0,
+    clicks:  0,
+    avgTime: parseInt(r.metricValues[1].value) || 0,
+  }))
+
+  // Parse traffic sources
+  const referrers = {}
+  ;(sourcesReport.rows || []).forEach(r => {
+    referrers[r.dimensionValues[0].value] = parseInt(r.metricValues[0].value) || 0
+  })
+
+  // Parse click events
+  const totalClicks = (clicksReport.rows || []).reduce((s, r) => s + (parseInt(r.metricValues[0].value) || 0), 0)
+  const recentClicks = (clicksReport.rows || []).slice(0, 15).map(r => ({
+    p: r.dimensionValues[0].value,
+    t: (r.dimensionValues[1]?.value || '').slice(0, 60),
+  }))
+
   return {
-    days: numDays, dates: targetDays,
-    totalViews: views, uniqueVisitors: allSids.size,
-    totalClicks: clicks, totalHovers: hovers,
-    bounceRate: views > 0 ? +((bounces / views) * 100).toFixed(1) : 0,
-    avgTimeOnPage: Math.round(totalTime / leaveCount),
-    avgScrollDepth: Math.round(scrollSum / leaveCount),
-    dailyViews: dvArr, dailyVisitors: duArr,
-    topPages, referrers: refAgg,
-    recentClicks: recentClicks.slice(-30),
-    recentHovers: recentHovers.slice(-20),
+    days: numDays, dates,
+    totalViews, uniqueVisitors,
+    totalClicks, totalHovers: 0,
+    bounceRate,
+    avgTimeOnPage: avgDuration,
+    avgScrollDepth: 0,
+    dailyViews, dailyVisitors,
+    topPages, referrers,
+    recentClicks,
+    recentHovers: [],
+    source: 'ga4',
   }
 }
 
