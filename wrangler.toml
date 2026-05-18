@@ -5,7 +5,9 @@ workers_dev     = true
 
 # ── Non-secret config ──
 [vars]
-DASHBOARD_ORIGIN = "*"
+DASHBOARD_ORIGIN   = "*"
+GA4_PROPERTY_ID    = "536809020"
+GA4_CLIENT_EMAIL   = "ga4-viewer@gen-lang-client-0629353211.iam.gserviceaccount.com"
 
 # ── KV Namespace bindings ──
 [[kv_namespaces]]
