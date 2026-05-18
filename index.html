@@ -1612,37 +1612,47 @@ body {
     <!-- ═══════════════ AGENTS PAGE ═══════════════ -->
     <div id="agents-page" class="page">
 
-      <!-- Run Task Panel -->
+      <!-- Agent Status Bar -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px;" id="agent-status-bar"></div>
+
+      <!-- Command Prompt -->
       <div class="panel mb-20" id="run-task-panel">
         <div class="panel-head">
           <span>⚡</span>
-          <div class="panel-title">Run Agent Task</div>
+          <div class="panel-title">Command Prompt</div>
           <span id="agent-api-status" style="font-size:11px;margin-left:auto;"></span>
         </div>
         <div class="panel-body">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Select Agent</label>
-              <select class="form-select" id="run-agent-select">
-                <option value="content">✍️ Content Agent</option>
-                <option value="social">📱 Social Agent</option>
-                <option value="data">📊 Data Agent</option>
-                <option value="web">🌐 Web Agent</option>
-                <option value="research">🔍 Research Agent</option>
-                <option value="design">🎨 Design Agent</option>
+              <label class="form-label">Agent</label>
+              <select class="form-select" id="run-agent-select" onchange="updateTemplates()">
+                <option value="leadgen">🎯 Lead Gen</option>
+                <option value="content">✍️ Content</option>
+                <option value="social">📱 Social</option>
+                <option value="data">📊 Data</option>
+                <option value="web">🌐 Web</option>
+                <option value="research">🔍 Research</option>
+                <option value="design">🎨 Design</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Quick Template</label>
+              <select class="form-select" id="task-template" onchange="applyTemplate()">
+                <option value="">— Custom task —</option>
               </select>
             </div>
             <div class="form-group" style="margin:0">
               <label class="form-label">Context (optional)</label>
-              <input class="form-input" id="run-agent-context" placeholder="e.g. targeting Philippine market, luxury segment">
+              <input class="form-input" id="run-agent-context" placeholder="e.g. luxury segment, Phuket market">
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Task</label>
-            <textarea class="form-textarea" id="run-agent-task" placeholder="Describe what you want this agent to do…" style="min-height:70px;"></textarea>
+          <div class="form-group" style="margin-bottom:10px;">
+            <textarea class="form-textarea" id="run-agent-task" placeholder="Describe what you want this agent to do…" style="min-height:60px;"></textarea>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <button class="btn btn-orange" id="run-agent-btn" onclick="runAgentTask()">▶ Run Task</button>
+            <button class="btn btn-ghost" onclick="openScheduleModal()">⏰ Schedule</button>
             <span id="run-agent-status" style="font-size:12px;color:var(--gray-400);"></span>
           </div>
         </div>
@@ -1663,24 +1673,39 @@ body {
         </div>
       </div>
 
-      <!-- Task History -->
+      <!-- Task Log -->
       <div class="panel mb-20">
         <div class="panel-head">
           <span>📋</span>
-          <div class="panel-title">Task History</div>
-          <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadTaskHistory()">↻ Refresh</button>
+          <div class="panel-title">Task Log</div>
+          <select id="log-agent-filter" onchange="loadTaskHistory()" style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid var(--gray-200);font-size:11px;">
+            <option value="">All Agents</option>
+            <option value="leadgen">🎯 Lead Gen</option>
+            <option value="content">✍️ Content</option>
+            <option value="social">📱 Social</option>
+            <option value="data">📊 Data</option>
+            <option value="web">🌐 Web</option>
+            <option value="research">🔍 Research</option>
+            <option value="design">🎨 Design</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="loadTaskHistory()">↻ Refresh</button>
         </div>
         <div class="panel-body no-pad" id="task-history-body">
-          <div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">
-            Connect Worker + ANTHROPIC_API_KEY to see task history.
-          </div>
+          <div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Loading task log...</div>
         </div>
       </div>
 
-      <div class="section-title">Active Agents (3)</div>
-      <div class="agents-grid" id="agents-grid"></div>
-      <div class="section-title" style="margin-top:24px;">All Agents</div>
-      <div class="agents-grid" id="agents-grid-all"></div>
+      <!-- Scheduled Tasks -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>⏰</span>
+          <div class="panel-title">Scheduled Tasks</div>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openScheduleModal()">+ Schedule</button>
+        </div>
+        <div class="panel-body no-pad" id="schedule-body">
+          <div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">No scheduled tasks. Click + Schedule to automate agent runs.</div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════════ LEAD GEN PAGE ═══════════════ -->
@@ -1997,6 +2022,60 @@ body {
 
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- SCHEDULE MODAL -->
+<div class="modal-overlay" id="schedule-modal" style="display:none;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title">⏰ Schedule Agent Task</div>
+    <div class="form-group">
+      <label class="form-label">Agent</label>
+      <select class="form-select" id="sched-agent">
+        <option value="leadgen">🎯 Lead Gen</option>
+        <option value="content">✍️ Content</option>
+        <option value="social">📱 Social</option>
+        <option value="data">📊 Data</option>
+        <option value="web">🌐 Web</option>
+        <option value="research">🔍 Research</option>
+        <option value="design">🎨 Design</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Task</label>
+      <textarea class="form-textarea" id="sched-task" placeholder="What should this agent do?" style="min-height:60px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Context (optional)</label>
+      <input class="form-input" id="sched-context" placeholder="Additional context for the agent">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Frequency</label>
+        <select class="form-select" id="sched-freq">
+          <option value="daily">Daily</option>
+          <option value="weekly" selected>Weekly</option>
+          <option value="biweekly">Every 2 weeks</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Day / Time</label>
+        <select class="form-select" id="sched-day">
+          <option value="mon">Monday</option>
+          <option value="tue">Tuesday</option>
+          <option value="wed">Wednesday</option>
+          <option value="thu">Thursday</option>
+          <option value="fri">Friday</option>
+          <option value="sat">Saturday</option>
+          <option value="sun">Sunday</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeScheduleModal()">Cancel</button>
+      <button class="btn btn-orange" onclick="saveSchedule()">Save Schedule</button>
+    </div>
+  </div>
+</div>
 
 <!-- ADD TASK MODAL -->
 <div class="modal-overlay" id="task-modal">
@@ -2369,7 +2448,7 @@ function initChartsForPage(page) {
   }
 
   if (page === 'articles') buildArticlesTable();
-  if (page === 'agents') { buildAgents(); loadTaskHistory(); }
+  if (page === 'agents') { updateTemplates(); loadTaskHistory(); loadSchedules(); }
   if (page === 'tasks') renderTasks();
 }
 
@@ -2433,59 +2512,162 @@ function buildArticlesTable() {
 }
 
 // ═══════════════════════════════════════════════════
-//  AGENTS
+//  AGENTS — Command Center
 // ═══════════════════════════════════════════════════
-const AGENTS = [
-  { name:'Content Agent', role:'Article & social copy writer', emoji:'✍️', status:'active', task:'Drafting 3 blog articles for May calendar', tasks:3, done:1, pct:33 },
-  { name:'Social Agent', role:'Posts & scheduling manager', emoji:'📱', status:'busy', task:'Scheduling posts across FB, IG, TikTok for week 20', tasks:5, done:4, pct:80 },
-  { name:'Data Agent', role:'Analytics & reporting', emoji:'📊', status:'active', task:'Compiling weekly social performance report', tasks:2, done:1, pct:50 },
-  { name:'Web Agent', role:'Website content & SEO', emoji:'🌐', status:'idle', task:'Waiting for article drafts from Content Agent', tasks:1, done:0, pct:0 },
-  { name:'Research Agent', role:'Trend & competitor analysis', emoji:'🔍', status:'idle', task:'No active task', tasks:0, done:0, pct:0 },
-  { name:'Design Agent', role:'Graphics & visual assets', emoji:'🎨', status:'active', task:'Creating Instagram carousel templates', tasks:4, done:3, pct:75 },
-];
-
-const statusMap = { active:'active', busy:'busy', idle:'idle', error:'error' };
-const badgeMap = { active:'badge-active', busy:'badge-busy', idle:'badge-idle', error:'badge-error' };
-const badgeLbl = { active:'Active', busy:'Busy', idle:'Idle', error:'Error' };
-
-function buildAgents() {
-  const active = AGENTS.filter(a => a.status !== 'idle');
-  const all = AGENTS;
-  document.getElementById('agents-grid').innerHTML = active.map(agentCard).join('');
-  document.getElementById('agents-grid-all').innerHTML = all.map(agentCard).join('');
-  document.querySelectorAll('#agents-grid .agent-card, #agents-grid-all .agent-card').forEach((card, i) => {
-    card.style.animationDelay = `${i * 0.07}s`;
-  });
+const AGENT_META = {
+  leadgen:  { emoji:'🎯', name:'Lead Gen',  role:'Vietnamese outreach' },
+  content:  { emoji:'✍️', name:'Content',   role:'Articles & copy' },
+  social:   { emoji:'📱', name:'Social',    role:'Posts & scheduling' },
+  data:     { emoji:'📊', name:'Data',      role:'Analytics & reports' },
+  web:      { emoji:'🌐', name:'Web',       role:'SEO & site content' },
+  research: { emoji:'🔍', name:'Research',  role:'Trends & competitors' },
+  design:   { emoji:'🎨', name:'Design',    role:'Visual assets & briefs' },
 }
 
-function agentCard(a) {
-  const colClass = { active:'active-agent', busy:'busy-agent', idle:'idle-agent', error:'error-agent' }[a.status];
-  const fillClass = { active:'green', busy:'orange', idle:'' }[a.status] || '';
-  return `<div class="agent-card ${colClass}">
-    <div class="agent-head">
-      <div class="agent-avatar">${a.emoji}</div>
-      <div>
-        <div class="agent-name">${a.name}</div>
-        <div class="agent-role">${a.role}</div>
+const TASK_TEMPLATES = {
+  leadgen: [
+    { label:'Generate lead outreach', task:'Generate personalized outreach messages for a new lead' },
+  ],
+  content: [
+    { label:'Write blog post', task:'Write a 600-word blog post about [topic] for blog.nomadassetcollective.com' },
+    { label:'3 IG captions', task:'Write 3 Instagram captions for [topic], include hashtags and CTA' },
+    { label:'Email newsletter', task:'Draft this week\'s email newsletter highlighting recent blog posts and listings' },
+  ],
+  social: [
+    { label:'Weekly content calendar', task:'Create a 7-day content calendar for Facebook, Instagram, and TikTok' },
+    { label:'Hashtag strategy', task:'Research and suggest 30 relevant hashtags for NAC real estate content' },
+    { label:'Engagement plan', task:'Create a daily engagement plan: comments, stories, community interaction' },
+  ],
+  data: [
+    { label:'Weekly performance report', task:'Compile a weekly social media performance report with key metrics and trends' },
+    { label:'Competitor analysis', task:'Analyze competitor social accounts and benchmark against NAC metrics' },
+    { label:'Monthly growth summary', task:'Summarize monthly growth across all platforms with actionable recommendations' },
+  ],
+  web: [
+    { label:'SEO audit', task:'Audit the top 5 blog posts for SEO: titles, meta descriptions, headings, keywords' },
+    { label:'Meta descriptions', task:'Write SEO-optimized meta descriptions for the latest 5 blog posts' },
+    { label:'Content structure', task:'Suggest internal linking and content structure improvements for the blog' },
+  ],
+  research: [
+    { label:'Market trends', task:'Research current real estate investment trends in Southeast Asia' },
+    { label:'Content opportunities', task:'Identify trending topics and content gaps in luxury real estate social media' },
+    { label:'Audience insights', task:'Research target audience demographics and content preferences for NAC' },
+  ],
+  design: [
+    { label:'IG carousel brief', task:'Create a design brief for a 5-slide Instagram carousel about [topic]' },
+    { label:'TikTok thumbnail', task:'Create design briefs for 3 TikTok video thumbnails' },
+    { label:'Brand asset specs', task:'Spec out banner designs for Facebook cover, IG story, and email header' },
+  ],
+}
+
+let _allTasksCache = []
+
+function updateTemplates() {
+  const agentId = document.getElementById('run-agent-select').value
+  const tpl = document.getElementById('task-template')
+  const templates = TASK_TEMPLATES[agentId] || []
+  tpl.innerHTML = '<option value="">— Custom task —</option>' +
+    templates.map((t, i) => `<option value="${i}">${t.label}</option>`).join('')
+}
+
+function applyTemplate() {
+  const agentId = document.getElementById('run-agent-select').value
+  const idx = document.getElementById('task-template').value
+  if (idx === '') return
+  const templates = TASK_TEMPLATES[agentId] || []
+  const t = templates[parseInt(idx)]
+  if (t) document.getElementById('run-agent-task').value = t.task
+}
+
+function buildAgentStatusBar(tasks) {
+  const bar = document.getElementById('agent-status-bar')
+  if (!bar) return
+  bar.innerHTML = Object.entries(AGENT_META).map(([id, m]) => {
+    const agentTasks = (tasks || []).filter(t => t.agentId === id)
+    const total = agentTasks.length
+    const lastTask = agentTasks[0]
+    const doneCount = agentTasks.filter(t => t.status === 'done').length
+    const errCount = agentTasks.filter(t => t.status === 'error').length
+    const statusColor = !lastTask ? 'var(--gray-300)' : lastTask.status === 'done' ? '#22c55e' : lastTask.status === 'error' ? '#ef4444' : '#f59e0b'
+    const lastTime = lastTask ? timeAgo(lastTask.created) : 'No runs'
+    return `<div style="background:var(--gray-50);border-radius:10px;padding:12px;cursor:pointer;border:1px solid var(--gray-100);transition:all 0.2s;" onclick="document.getElementById('run-agent-select').value='${id}';updateTemplates();" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--gray-100)'">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:18px;">${m.emoji}</span>
+        <span style="font-weight:600;font-size:12px;">${m.name}</span>
+        <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};margin-left:auto;"></span>
       </div>
-      <span class="agent-status-badge ${badgeMap[a.status]}">${badgeLbl[a.status]}</span>
-    </div>
-    <div class="agent-task">
-      <div class="agent-task-label">Current Task</div>
-      ${a.task}
-    </div>
-    ${a.tasks > 0 ? `
-    <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px;">${a.done}/${a.tasks} tasks complete</div>
-    <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${a.pct}%"></div></div>` : ''}
-    <div class="agent-meta">
-      <span>📋 ${a.tasks} tasks</span>
-      <span>✅ ${a.done} done</span>
-    </div>
-    <div class="agent-actions">
-      <button class="btn btn-primary btn-sm" onclick="openAddTask('progress','${a.name.split(' ')[0][0]}A')">+ Assign Task</button>
-      <button class="btn btn-ghost btn-sm">View Log</button>
-    </div>
-  </div>`;
+      <div style="font-size:10px;color:var(--gray-400);">${lastTime}</div>
+      <div style="font-size:10px;color:var(--gray-500);margin-top:2px;">${total} runs${errCount ? ` · ${errCount} err` : ''}</div>
+    </div>`
+  }).join('')
+}
+
+// Schedule modal
+function openScheduleModal() {
+  const agentId = document.getElementById('run-agent-select').value
+  const task = document.getElementById('run-agent-task').value
+  document.getElementById('sched-agent').value = agentId
+  document.getElementById('sched-task').value = task
+  document.getElementById('sched-context').value = document.getElementById('run-agent-context').value
+  document.getElementById('schedule-modal').style.display = 'flex'
+}
+function closeScheduleModal() { document.getElementById('schedule-modal').style.display = 'none' }
+
+async function saveSchedule() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  if (!workerUrl) return alert('Set Worker URL in Settings first')
+  const payload = {
+    agentId:  document.getElementById('sched-agent').value,
+    task:     document.getElementById('sched-task').value.trim(),
+    context:  document.getElementById('sched-context').value.trim(),
+    freq:     document.getElementById('sched-freq').value,
+    day:      document.getElementById('sched-day').value,
+  }
+  if (!payload.task) return alert('Enter a task')
+  try {
+    const res = await fetch(`${workerUrl}/api/agents/schedules`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    closeScheduleModal()
+    loadSchedules()
+  } catch (e) { alert('Error: ' + e.message) }
+}
+
+async function loadSchedules() {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  const el = document.getElementById('schedule-body')
+  if (!workerUrl || !el) return
+  try {
+    const res = await fetch(`${workerUrl}/api/agents/schedules`)
+    const data = await res.json()
+    if (!data.schedules?.length) {
+      el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">No scheduled tasks.</div>'
+      return
+    }
+    el.innerHTML = `<table class="data-table">
+      <thead><tr><th>Agent</th><th>Task</th><th>Frequency</th><th>Last Run</th><th></th></tr></thead>
+      <tbody>${data.schedules.map(s => {
+        const m = AGENT_META[s.agentId] || { emoji:'🤖', name:s.agentId }
+        return `<tr>
+          <td>${m.emoji} ${m.name}</td>
+          <td class="bold" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.task}</td>
+          <td style="font-size:11px;">${s.freq}${s.day ? ' / ' + s.day : ''}</td>
+          <td style="font-size:11px;">${s.lastRun ? timeAgo(s.lastRun) : 'Never'}</td>
+          <td><button class="btn btn-ghost btn-sm" style="color:#ef4444;" onclick="deleteSchedule('${s.id}')">✕</button></td>
+        </tr>`
+      }).join('')}</tbody></table>`
+  } catch (e) { el.innerHTML = `<div style="padding:16px;font-size:12px;color:#ef4444;">${e.message}</div>` }
+}
+
+async function deleteSchedule(id) {
+  const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+  try {
+    await fetch(`${workerUrl}/api/agents/schedules/${id}`, { method: 'DELETE' })
+    loadSchedules()
+  } catch (e) { alert(e.message) }
 }
 
 // ═══════════════════════════════════════════════════
@@ -3029,26 +3211,70 @@ async function loadTaskHistory() {
       return
     }
 
-    if (!data.tasks?.length) {
-      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">No tasks yet — run your first agent task above.</div>'
+    _allTasksCache = data.tasks || []
+    buildAgentStatusBar(_allTasksCache)
+
+    const filter = document.getElementById('log-agent-filter')?.value || ''
+    const tasks = filter ? _allTasksCache.filter(t => t.agentId === filter) : _allTasksCache
+
+    if (!tasks.length) {
+      el.innerHTML = `<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">${filter ? 'No tasks for this agent.' : 'No tasks yet — run your first agent task above.'}</div>`
       return
     }
 
     el.innerHTML = `<table class="data-table">
-      <thead><tr><th>Agent</th><th>Task</th><th>Status</th><th>Time</th><th></th></tr></thead>
-      <tbody>${data.tasks.map(t => `
+      <thead><tr><th>Agent</th><th>Task</th><th>Status</th><th>Tokens</th><th>Time</th><th></th></tr></thead>
+      <tbody>${tasks.map(t => `
         <tr>
-          <td>${t.agentEmoji} ${t.agentName}</td>
-          <td class="bold" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.task}</td>
+          <td style="white-space:nowrap;">${t.agentEmoji} ${t.agentName?.split(' ')[0] || ''}</td>
+          <td class="bold" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.task}</td>
           <td><span class="agent-status-badge ${t.status === 'done' ? 'badge-active' : t.status === 'running' ? 'badge-busy' : 'badge-error'}" style="font-size:10px;">${t.status}</span></td>
+          <td style="font-size:10px;color:var(--gray-400);">${t.tokens ? (t.tokens.input + t.tokens.output) : '—'}</td>
           <td style="white-space:nowrap;font-size:11px;">${timeAgo(t.created)}</td>
-          <td><button class="btn btn-ghost btn-sm" onclick="viewHistoryTask('${t.id}')">View</button></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="toggleTaskExpand('${t.id}',this)">▶ View</button>
+            <button class="btn btn-ghost btn-sm" onclick="rerunTask('${t.agentId}','${btoa(encodeURIComponent(t.task))}')">↻</button>
+          </td>
+        </tr>
+        <tr id="expand-${t.id}" style="display:none;">
+          <td colspan="6" style="padding:0;">
+            <div style="background:var(--gray-50);padding:14px;font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:300px;overflow-y:auto;border-top:1px solid var(--gray-100);" id="expand-text-${t.id}">Loading...</div>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>`
   } catch (e) {
     el.innerHTML = `<div style="padding:16px;font-size:12px;color:#ef4444;">Could not load history: ${e.message}</div>`
   }
+}
+
+async function toggleTaskExpand(taskId, btn) {
+  const row = document.getElementById(`expand-${taskId}`)
+  if (!row) return
+  if (row.style.display === 'none') {
+    row.style.display = 'table-row'
+    btn.textContent = '▼ Hide'
+    const textEl = document.getElementById(`expand-text-${taskId}`)
+    // Check cache first
+    const cached = _allTasksCache.find(t => t.id === taskId)
+    if (cached?.output) { textEl.textContent = cached.output; return }
+    const workerUrl = (localStorage.getItem('nac_worker_url') || WORKER_URL).replace(/\/$/, '')
+    try {
+      const res = await fetch(`${workerUrl}/api/agents/task/${taskId}`)
+      const data = await res.json()
+      textEl.textContent = data.output || data.error || 'No output'
+    } catch (e) { textEl.textContent = 'Error loading: ' + e.message }
+  } else {
+    row.style.display = 'none'
+    btn.textContent = '▶ View'
+  }
+}
+
+function rerunTask(agentId, encodedTask) {
+  document.getElementById('run-agent-select').value = agentId
+  document.getElementById('run-agent-task').value = decodeURIComponent(atob(encodedTask))
+  updateTemplates()
+  document.getElementById('run-task-panel').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function viewHistoryTask(taskId) {

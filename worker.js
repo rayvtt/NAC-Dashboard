@@ -171,6 +171,14 @@ export default {
         return json(await getTask(id, env))
       }
 
+      // ── Agent Schedules ──
+      if (pathname === '/api/agents/schedules' && request.method === 'POST') return json(await createSchedule(request, env))
+      if (pathname === '/api/agents/schedules' && request.method === 'GET')  return json(await listSchedules(env))
+      if (pathname.startsWith('/api/agents/schedules/') && request.method === 'DELETE') {
+        const id = pathname.split('/').pop()
+        return json(await deleteSchedule(id, env))
+      }
+
       // ── Lead Gen ──
       if (pathname === '/api/leadgen/generate' && request.method === 'POST') return json(await generateLeadOutreach(request, env))
       if (pathname === '/api/leads/save'       && request.method === 'POST') return json(await saveLead(request, env))
@@ -780,6 +788,47 @@ async function getGA4Token(env) {
   const { access_token, error } = await res.json()
   if (!access_token) throw new Error(`GA4 token error: ${error}`)
   return access_token
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AGENT SCHEDULES
+// ─────────────────────────────────────────────────────────────────────────────
+async function createSchedule(request, env) {
+  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
+  const body = await request.json()
+  const { agentId, task, context, freq, day } = body
+  if (!agentId || !task) throw new Error('agentId and task are required')
+
+  const id = `sched_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  const schedule = { id, agentId, task, context: context || '', freq, day, created: new Date().toISOString(), lastRun: null }
+
+  await env.NAC_AGENTS.put(id, JSON.stringify(schedule), { expirationTtl: 86400 * 365 })
+
+  const idxRaw = await env.NAC_AGENTS.get('__schedules_index__')
+  const idx = idxRaw ? JSON.parse(idxRaw) : []
+  idx.push(id)
+  await env.NAC_AGENTS.put('__schedules_index__', JSON.stringify(idx))
+
+  return { saved: true, id }
+}
+
+async function listSchedules(env) {
+  if (!env.NAC_AGENTS) return { schedules: [], configured: false }
+  const idxRaw = await env.NAC_AGENTS.get('__schedules_index__')
+  const idx = idxRaw ? JSON.parse(idxRaw) : []
+  const schedules = (await Promise.all(
+    idx.map(id => env.NAC_AGENTS.get(id).then(r => r ? JSON.parse(r) : null))
+  )).filter(Boolean)
+  return { schedules, configured: true }
+}
+
+async function deleteSchedule(id, env) {
+  if (!env.NAC_AGENTS) return { error: 'KV not configured' }
+  await env.NAC_AGENTS.delete(id)
+  const idxRaw = await env.NAC_AGENTS.get('__schedules_index__')
+  const idx = idxRaw ? JSON.parse(idxRaw) : []
+  await env.NAC_AGENTS.put('__schedules_index__', JSON.stringify(idx.filter(i => i !== id)))
+  return { deleted: id }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
