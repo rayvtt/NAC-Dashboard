@@ -7,6 +7,11 @@ workers_dev     = true
 [vars]
 DASHBOARD_ORIGIN = "*"
 
+# ── KV Namespace bindings ──
+[[kv_namespaces]]
+binding = "NAC_AGENTS"
+id      = "9dec6f3722a7487f9331f29156b04c56"
+
 # ── Secrets — set these via CLI, never commit them ──
 # Run once per secret:
 #
