@@ -393,6 +393,25 @@ body {
 .panel-body { padding: 22px 24px; }
 .panel-body.no-pad { padding: 0; }
 .mb-20 { margin-bottom: 18px; }
+/* ---- Site Map tile (Overview) ---- */
+.sitemap-tile{display:grid;grid-template-columns:300px 1fr;gap:0;background:var(--card-bg);
+  border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);overflow:hidden;
+  text-decoration:none;color:inherit;transition:var(--transition);margin-bottom:8px}
+.sitemap-tile:hover{border-color:rgba(255,255,255,0.12);background:rgba(255,255,255,0.04)}
+.sitemap-thumb{position:relative;min-height:180px;background:linear-gradient(135deg,#1800AD,#3a1fd9 60%,#5a23c4);overflow:hidden}
+.sitemap-thumb img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;opacity:0;transition:opacity .3s}
+.sitemap-thumb-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.sm-spin{width:24px;height:24px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:smsp 1s linear infinite}
+@keyframes smsp{to{transform:rotate(360deg)}}
+.sitemap-tile-body{padding:22px 24px;display:flex;flex-direction:column;justify-content:center}
+.sitemap-tile-title{font-size:16px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:10px}
+.sm-open{font-size:11px;font-weight:700;color:#fff;background:var(--primary);border-radius:999px;padding:3px 10px}
+.sitemap-tile-sub{font-size:13px;color:var(--text-secondary);margin:6px 0 16px;max-width:560px;line-height:1.5}
+.sitemap-tile-sub code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;font-size:12px}
+.sitemap-tile-stats{display:flex;gap:26px;flex-wrap:wrap}
+.sm-stat b{font-size:22px;font-weight:800;color:var(--text-primary);display:block;line-height:1}
+.sm-stat span{font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px}
+@media(max-width:760px){.sitemap-tile{grid-template-columns:1fr}.sitemap-thumb{min-height:150px}}
 
 /* ── PLATFORM CARDS ── */
 .platform-grid {
@@ -1269,6 +1288,24 @@ body {
           <div class="stat-platform">Task board</div>
         </div>
       </div>
+
+      <div class="section-title">Site Map</div>
+      <a class="sitemap-tile" href="sitemap/" target="_blank" rel="noopener">
+        <div class="sitemap-thumb" id="sitemap-thumb">
+          <div class="sitemap-thumb-ph"><span class="sm-spin"></span></div>
+        </div>
+        <div class="sitemap-tile-body">
+          <div class="sitemap-tile-title">Interactive Site Map <span class="sm-open">open ↗</span></div>
+          <div class="sitemap-tile-sub">Both sites mapped live from <code>wp-sitemap.xml</code> — click any page for a screenshot preview.</div>
+          <div class="sitemap-tile-stats">
+            <div class="sm-stat"><b>284</b><span>URLs</span></div>
+            <div class="sm-stat"><b>196</b><span>main site</span></div>
+            <div class="sm-stat"><b>99</b><span>blog</span></div>
+            <div class="sm-stat"><b>30</b><span>PDPs</span></div>
+            <div class="sm-stat"><b>18</b><span>brochures</span></div>
+          </div>
+        </div>
+      </a>
 
       <div class="section-title">Platform Overview</div>
       <div class="platform-grid">
@@ -3885,6 +3922,30 @@ function downloadLeadPDF() {
 document.querySelector('[data-page="leadgen"]').addEventListener('click', () => {
   setTimeout(loadLeads, 80)
 })
+
+// Overview Site Map tile — live homepage thumbnail via WordPress mshots (async render, retry)
+;(function(){
+  const thumb = document.getElementById('sitemap-thumb');
+  if(!thumb) return;
+  const target = 'https://nomadassetcollective.com/';
+  const base = 'https://s0.wp.com/mshots/v1/' + encodeURIComponent(target) + '?w=600&h=360';
+  let tries = 0;
+  const img = document.createElement('img'); img.alt = 'nomadassetcollective.com';
+  thumb.appendChild(img);
+  const ph = thumb.querySelector('.sitemap-thumb-ph');
+  function attempt(){
+    tries++;
+    const probe = new Image();
+    probe.onload = function(){
+      if(probe.naturalWidth >= 400 || tries >= 6){
+        img.src = probe.src; img.style.opacity = 1; if(ph) ph.style.display = 'none';
+      } else { setTimeout(attempt, 3000); }
+    };
+    probe.onerror = function(){ if(tries < 6) setTimeout(attempt, 3000); else if(ph) ph.style.display='none'; };
+    probe.src = base + (tries>1 ? ('&n='+tries) : '');
+  }
+  attempt();
+})()
 </script>
 
 <!-- BOTTOM TAB BAR (mobile only) -->
