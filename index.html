@@ -1172,6 +1172,10 @@ body {
   <a class="nav-item" data-page="articles">
     <span class="icon">📝</span> Articles
   </a>
+  <a class="nav-item" href="sitemap/" target="_blank" rel="noopener">
+    <span class="icon">🗺️</span> Sitemap
+    <span class="nav-badge">295</span>
+  </a>
 
   <div class="sidebar-section">Cowork</div>
   <a class="nav-item" data-page="agents">
@@ -2207,6 +2211,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.querySelectorAll('.nav-item').forEach(el => {
+  // External links (e.g. Sitemap) have an href + no data-page — let the browser open them.
+  if (!el.dataset.page) return;
   el.addEventListener('click', () => nav(el.dataset.page));
 });
 
