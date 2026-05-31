@@ -79,6 +79,9 @@
   .node:hover .lm{opacity:1}
   .hit{background:#fff4e6 !important;box-shadow:inset 0 0 0 1px var(--orange-2)}
   .hide{display:none !important}
+  /* parents-only mode: hide end-page leaf rows (toggle re-shows them) */
+  body.parents-only li.leafrow{display:none}
+  .seg.small button{padding:7px 12px;font-size:12.5px}
   .count-note{padding:8px 14px;color:var(--sub);font-size:12.5px}
   footer{padding:18px 20px;color:#9aa0ac;font-size:12px;text-align:center}
   .lbl.click{cursor:pointer}
@@ -117,7 +120,7 @@
   @media(max-width:760px){.heros{grid-template-columns:1fr}.search input{width:160px}.card .shot{height:220px}}
 </style>
 </head>
-<body>
+<body class="parents-only">
 <header>
   <div class="brand"><b>NAC Sitemap</b><span id="genline">Interactive site map</span></div>
   <div class="seg" id="siteSeg">
@@ -131,6 +134,10 @@
     <button class="clr" id="clr">×</button>
   </div>
   <div class="grow"></div>
+  <div class="seg small" id="depthSeg">
+    <button data-depth="parents" class="active">Parents only</button>
+    <button data-depth="pages">Show pages</button>
+  </div>
   <button class="btn" id="expand">Expand all</button>
   <button class="btn" id="collapse">Collapse</button>
 </header>
@@ -250,6 +257,9 @@ function renderNode(node, siteId, depth){
     // leaf with a real URL → clicking the label opens the preview card
     lbl.classList.add('click');
     lbl.addEventListener('click', ()=> openCard(node, siteId));
+    // end-pages (PDPs, posts, brochures, citizenships…) are hidden in "parents only" mode;
+    // top-level standalone pages (depth 0) always stay.
+    if (depth >= 1) li.classList.add('leafrow');
   }
   return li;
 }
@@ -370,17 +380,31 @@ document.getElementById('collapse').addEventListener('click',()=>{
   document.querySelectorAll('#tree > ul.t > li.row > .node > .twist.has').forEach(t=>t.textContent='▼');
 });
 
+/* ---------- depth toggle (parents only / show pages) ---------- */
+document.querySelectorAll('#depthSeg button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#depthSeg button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.body.classList.toggle('parents-only', b.dataset.depth==='parents');
+  });
+});
+
 /* ---------- search ---------- */
 const q=document.getElementById('q'), clr=document.getElementById('clr'), info=document.getElementById('matchinfo');
 function clearSearch(){
   document.querySelectorAll('#tree .row').forEach(r=>r.classList.remove('hide'));
   document.querySelectorAll('#tree .lbl').forEach(l=>l.classList.remove('hit'));
   info.textContent=''; clr.style.display='none';
+  // restore whatever the depth toggle had selected
+  const onlyParents = document.querySelector('#depthSeg button[data-depth="parents"]').classList.contains('active');
+  document.body.classList.toggle('parents-only', onlyParents);
 }
 function runSearch(){
   const term=q.value.trim().toLowerCase();
   clr.style.display = term?'block':'none';
   if(!term){clearSearch(); return;}
+  // while searching, reveal end-pages so leaf matches can surface
+  document.body.classList.remove('parents-only');
   let hits=0;
   const rows=[...document.querySelectorAll('#tree li.row')];
   rows.forEach(r=>r.classList.add('hide'));
