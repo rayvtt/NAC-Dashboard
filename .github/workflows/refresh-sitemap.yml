@@ -1,0 +1,45 @@
+name: Refresh Sitemap
+
+# Rebuilds sitemap/index.html from both sites' live sitemap_index.xml so the
+# visualisation stays current as pages are published. Runs daily; can also be
+# triggered manually. Commits straight to main (GitHub Pages serves from main);
+# only commits when the data actually changed.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # daily, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-sitemap
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    name: Rebuild sitemap from live sitemaps
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rebuild sitemap data
+        run: node sitemap/build-data.mjs
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- sitemap/index.html; then
+            echo "No sitemap changes — nothing to commit."
+          else
+            git config user.name "nac-sitemap-bot"
+            git config user.email "nac-sitemap-bot@users.noreply.github.com"
+            git add sitemap/index.html
+            git commit -m "Sitemap: auto-refresh from live sitemaps ($(date -u +%Y-%m-%d))"
+            git push
+            echo "Pushed refreshed sitemap."
+          fi
