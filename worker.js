@@ -52,7 +52,7 @@ const NOTION_QUESTIONNAIRE_DB_ID = 'fffac8e9-2444-446d-89b6-f5b6378c8638'
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Consulting-Key',
 }
 
 // ── Agent personas ────────────────────────────────────────────────────────────
