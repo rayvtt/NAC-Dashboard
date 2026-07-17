@@ -22,6 +22,13 @@
  *
  * ── KV Namespace (wrangler.toml) ──
  *   NAC_AGENTS             Stores agent task state + history
+ *
+ * ── Consulting (client PII, homepage + partner-gateway reachable) ──
+ *   NOTION_API_TOKEN       Notion integration token (shared with Lead CRM)
+ *   CONSULTING_ACCESS_KEY  Bespoke key required (header X-Consulting-Key) on
+ *                          every /api/notion/consultations|questionnaires call
+ *                          and /api/consulting-auth — real server-side check,
+ *                          not just a UI gate.
  */
 
 const GITHUB_USER  = 'rayvtt'
@@ -139,6 +146,24 @@ function json(data, status = 200) {
   })
 }
 
+// Consulting data (client PII: names, emails, phone, notes) is reachable from
+// the public homepage + partner gateway, so unlike the rest of this worker it
+// requires a real server-side key check — a client-side-only gate is not
+// security, since anyone can read the fetch URL from devtools.
+function requireConsultingKey(request, env) {
+  if (!env.CONSULTING_ACCESS_KEY) {
+    const e = new Error('CONSULTING_ACCESS_KEY not configured on the worker')
+    e.status = 500
+    throw e
+  }
+  const key = request.headers.get('X-Consulting-Key') || ''
+  if (key !== env.CONSULTING_ACCESS_KEY) {
+    const e = new Error('Invalid or missing consulting access key')
+    e.status = 401
+    throw e
+  }
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env, ctx) {
@@ -207,20 +232,25 @@ export default {
         return json(await notionUpdateLead(pageId, request, env))
       }
 
-      // ── Consulting: Initial Consultations (stage 1) ──
-      if (pathname === '/api/notion/consultations'     && request.method === 'POST') return json(await notionCreateConsultation(request, env))
-      if (pathname === '/api/notion/consultations')                                   return json(await notionListConsultations(env))
+      // ── Consulting: access key check (used by the homepage / partner-gateway panels
+      //    to verify a key without fetching real data) ──
+      if (pathname === '/api/consulting-auth') { requireConsultingKey(request, env); return json({ ok: true }) }
+
+      // ── Consulting: Initial Consultations (stage 1) — all require the access key ──
+      if (pathname === '/api/notion/consultations'     && request.method === 'POST') { requireConsultingKey(request, env); return json(await notionCreateConsultation(request, env)) }
+      if (pathname === '/api/notion/consultations')                                   { requireConsultingKey(request, env); return json(await notionListConsultations(env)) }
       if (pathname.startsWith('/api/notion/consultations/') && request.method === 'PATCH') {
+        requireConsultingKey(request, env)
         const pageId = pathname.split('/').pop()
         return json(await notionUpdateConsultation(pageId, request, env))
       }
 
       // ── Consulting: Questionnaire / KYC Intake (stage 2, read-only — clients submit via Notion form) ──
-      if (pathname === '/api/notion/questionnaires') return json(await notionListQuestionnaires(env))
+      if (pathname === '/api/notion/questionnaires') { requireConsultingKey(request, env); return json(await notionListQuestionnaires(env)) }
 
       return json({ error: 'Not found' }, 404)
     } catch (e) {
-      return json({ error: e.message || 'Worker error' }, 500)
+      return json({ error: e.message || 'Worker error' }, e.status || 500)
     }
   },
 }
