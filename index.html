@@ -2144,6 +2144,22 @@ body {
             </div>
           </div>
 
+          <!-- Consulting access key -->
+          <div class="panel mb-20">
+            <div class="panel-head"><span>🔒</span><div class="panel-title">Consulting Access Key</div></div>
+            <div class="panel-body">
+              <div class="form-group">
+                <label class="form-label">Access Key</label>
+                <input class="form-input" id="cfg-consulting-key" type="password" placeholder="the CONSULTING_ACCESS_KEY set on the worker" style="font-family:monospace;font-size:12px;">
+                <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">Required to read/write the Consulting page (client PII) — must match the worker's <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">CONSULTING_ACCESS_KEY</code> secret. Same key used by the homepage/partner-gateway monitoring panels.</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <button class="btn btn-primary btn-sm" onclick="saveConsultingKey()">Save Key</button>
+                <span id="consulting-key-result" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+              </div>
+            </div>
+          </div>
+
           <!-- Secret setup guide -->
           <div class="panel">
             <div class="panel-head"><span>🔑</span><div class="panel-title">Set Secrets via Wrangler CLI</div></div>
@@ -3196,6 +3212,7 @@ const SECRETS_LIST = [
   { name:'GA4_PRIVATE_KEY',      label:'GA4 Private Key (PEM)',       platform:'analytics', hint:'Same JSON key → copy private_key value (full PEM with \\n). Then: wrangler secret put GA4_PRIVATE_KEY' },
   { name:'ANTHROPIC_API_KEY',   label:'Anthropic API Key (AI Agents)', platform:'agents',   hint:'console.anthropic.com → API Keys → Create Key' },
   { name:'NOTION_API_TOKEN',    label:'Notion Integration Token (Lead CRM)', platform:'notion', hint:'notion.so/my-integrations → New integration → copy token. Then share the NAC Lead CRM database with the integration.' },
+  { name:'CONSULTING_ACCESS_KEY', label:'Consulting Access Key',      platform:'notion', hint:'Any strong random string. Gates /api/notion/consultations + /api/notion/questionnaires — required by this dashboard\'s Settings tab above, and by the homepage/partner-gateway monitoring panels.' },
 ]
 
 function buildSecretsGuide() {
@@ -3276,7 +3293,18 @@ function renderStatusPanel(status) {
 function initSettingsPage() {
   const saved = localStorage.getItem('nac_worker_url') || WORKER_URL
   if (saved) document.getElementById('cfg-worker-url').value = saved
+  const savedKey = localStorage.getItem('nac_consulting_key') || ''
+  if (savedKey) document.getElementById('cfg-consulting-key').value = savedKey
   buildSecretsGuide()
+}
+
+function saveConsultingKey() {
+  const key = document.getElementById('cfg-consulting-key').value.trim()
+  const resultEl = document.getElementById('consulting-key-result')
+  if (!key) { localStorage.removeItem('nac_consulting_key'); resultEl.innerHTML = ''; return }
+  localStorage.setItem('nac_consulting_key', key)
+  resultEl.innerHTML = '<span style="color:#22c55e;">✓ Saved</span>'
+  setTimeout(() => { resultEl.innerHTML = '' }, 2000)
 }
 
 // ═══════════════════════════════════════════════════
@@ -4105,6 +4133,12 @@ function csOutcomeBadge(outcome) {
   return `<span style="font-size:10px;background:${c.bg};color:${c.color};padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;">${escH(outcome || '—')}</span>`
 }
 
+// Every consulting endpoint requires this header server-side (see worker.js
+// requireConsultingKey) — client PII, not gated by obscurity alone.
+function csHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Consulting-Key': localStorage.getItem('nac_consulting_key') || '' }
+}
+
 async function saveConsultation() {
   const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
   const btn = document.getElementById('cs-save-btn')
@@ -4134,7 +4168,7 @@ async function saveConsultation() {
 
   try {
     const res  = await fetch(`${workerUrl}/api/notion/consultations`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: csHeaders(),
       body: JSON.stringify(payload),
     })
     const data = await res.json()
@@ -4177,7 +4211,11 @@ async function loadConsultations() {
   bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Đang tải từ Notion...</div>'
 
   try {
-    const res  = await fetch(`${workerUrl}/api/notion/consultations`)
+    const res  = await fetch(`${workerUrl}/api/notion/consultations`, { headers: csHeaders() })
+    if (res.status === 401) {
+      bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#ef4444;">🔒 Invalid or missing access key — set it in ⚙️ API Settings.</div>'
+      return
+    }
     const data = await res.json()
     if (!data.configured) {
       bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">NOTION_API_TOKEN chưa được cấu hình trên worker.</div>'
@@ -4252,7 +4290,11 @@ async function loadQuestionnaires() {
   bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Đang tải từ Notion...</div>'
 
   try {
-    const res  = await fetch(`${workerUrl}/api/notion/questionnaires`)
+    const res  = await fetch(`${workerUrl}/api/notion/questionnaires`, { headers: csHeaders() })
+    if (res.status === 401) {
+      bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#ef4444;">🔒 Invalid or missing access key — set it in ⚙️ API Settings.</div>'
+      return
+    }
     const data = await res.json()
     if (!data.configured) {
       bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">NOTION_API_TOKEN chưa được cấu hình trên worker.</div>'
