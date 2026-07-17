@@ -36,6 +36,12 @@ const NOTION_API   = 'https://api.notion.com/v1'
 const NOTION_DB_ID = '2fe48ec2-5e86-80ef-a3a3-fb8113cf6657'
 const NOTION_VER   = '2022-06-28'
 
+// ── Consulting process (stage 1: Initial Consultation, stage 2: Questionnaire) ──
+// 📞 NAC - Initial Consultations — advisor logs what happened in the first meeting
+const NOTION_CONSULT_DB_ID = '14eef0d5-4c2d-4023-8d80-b8b916d9862d'
+// 🧾 KYC Intake (Đầu vào khách hàng) — generalized questionnaire, clients submit via Notion form
+const NOTION_QUESTIONNAIRE_DB_ID = 'fffac8e9-2444-446d-89b6-f5b6378c8638'
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -200,6 +206,17 @@ export default {
         const pageId = pathname.split('/').pop()
         return json(await notionUpdateLead(pageId, request, env))
       }
+
+      // ── Consulting: Initial Consultations (stage 1) ──
+      if (pathname === '/api/notion/consultations'     && request.method === 'POST') return json(await notionCreateConsultation(request, env))
+      if (pathname === '/api/notion/consultations')                                   return json(await notionListConsultations(env))
+      if (pathname.startsWith('/api/notion/consultations/') && request.method === 'PATCH') {
+        const pageId = pathname.split('/').pop()
+        return json(await notionUpdateConsultation(pageId, request, env))
+      }
+
+      // ── Consulting: Questionnaire / KYC Intake (stage 2, read-only — clients submit via Notion form) ──
+      if (pathname === '/api/notion/questionnaires') return json(await notionListQuestionnaires(env))
 
       return json({ error: 'Not found' }, 404)
     } catch (e) {
@@ -567,6 +584,142 @@ async function notionUpdateLead(pageId, request, env) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
   return { updated: true, id: pageId }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONSULTING — Initial Consultations (stage 1 of the 4-stage NAC process)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function notionCreateConsultation(request, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const b     = await request.json()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const props = {
+    'Client Name':        { title: [{ text: { content: b.name || '' } }] },
+    'Consultation Date':  { date:  { start: b.date || today } },
+  }
+
+  if (b.email)    props['Client Email']        = { email: b.email }
+  if (b.phone)    props['Client Phone']        = { phone_number: b.phone }
+  if (b.format)   props['Meeting Format']      = { select: { name: b.format } }
+  if (b.notes)    props['Client Goals / Notes'] = { rich_text: [{ text: { content: b.notes.slice(0, 1999) } }] }
+  if (b.outcome)  props['Outcome']             = { select: { name: b.outcome } }
+  if (b.followUp) props['Follow-up Date']      = { date: { start: b.followUp } }
+  if (Array.isArray(b.programs) && b.programs.length) {
+    props['Programs Discussed'] = { multi_select: b.programs.map(p => ({ name: p })) }
+  }
+  if (b.relatedLeadId) {
+    props['Related Lead'] = { relation: [{ id: b.relatedLeadId }] }
+  }
+
+  const res  = await fetch(`${NOTION_API}/pages`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ parent: { database_id: NOTION_CONSULT_DB_ID }, properties: props }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+  return { created: true, id: data.id, url: data.url }
+}
+
+async function notionListConsultations(env) {
+  if (!env.NOTION_API_TOKEN) return { consultations: [], configured: false }
+
+  const res  = await fetch(`${NOTION_API}/databases/${NOTION_CONSULT_DB_ID}/query`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({
+      sorts: [{ property: 'Consultation Date', direction: 'descending' }],
+      page_size: 100,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+
+  const consultations = (data.results || []).map(page => {
+    const p = page.properties
+    return {
+      id:          page.id,
+      notionUrl:   page.url,
+      name:        p['Client Name']?.title?.[0]?.text?.content || '',
+      email:       p['Client Email']?.email || '',
+      phone:       p['Client Phone']?.phone_number || '',
+      date:        p['Consultation Date']?.date?.start || '',
+      format:      p['Meeting Format']?.select?.name || '',
+      notes:       p['Client Goals / Notes']?.rich_text?.[0]?.text?.content || '',
+      outcome:     p['Outcome']?.select?.name || '',
+      followUp:    p['Follow-up Date']?.date?.start || '',
+      stage:       p['Stage']?.status?.name || '',
+      programs:    (p['Programs Discussed']?.multi_select || []).map(s => s.name),
+      advisor:     (p['Advisor']?.people || []).map(u => u.name).join(', '),
+      createdTime: page.created_time,
+    }
+  })
+
+  return { consultations, configured: true, hasMore: data.has_more }
+}
+
+async function notionUpdateConsultation(pageId, request, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const b     = await request.json()
+  const props = {}
+
+  if (b.outcome)  props['Outcome']              = { select: { name: b.outcome } }
+  if (b.stage)    props['Stage']                = { status: { name: b.stage } }
+  if (b.notes)    props['Client Goals / Notes'] = { rich_text: [{ text: { content: b.notes.slice(0, 1999) } }] }
+  if (b.followUp) props['Follow-up Date']       = { date: { start: b.followUp } }
+
+  const res  = await fetch(`${NOTION_API}/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ properties: props }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+  return { updated: true, id: pageId }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONSULTING — Questionnaire / KYC Intake (stage 2, read-only)
+//  Clients fill this in directly via the Notion form; the dashboard only lists
+//  submissions for staff visibility. See NAC-Dashboard CLAUDE.md for the DB.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function notionListQuestionnaires(env) {
+  if (!env.NOTION_API_TOKEN) return { questionnaires: [], configured: false }
+
+  const res  = await fetch(`${NOTION_API}/databases/${NOTION_QUESTIONNAIRE_DB_ID}/query`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({
+      sorts: [{ property: 'Submitted', direction: 'descending' }],
+      page_size: 100,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+
+  const questionnaires = (data.results || []).map(page => {
+    const p = page.properties
+    return {
+      id:          page.id,
+      notionUrl:   page.url,
+      name:        p['Client name (as per passport)']?.title?.[0]?.text?.content || '',
+      nameVi:      p['Họ tên đầy đủ (VI)']?.rich_text?.[0]?.text?.content || '',
+      nationality: p['Nationality / Quốc tịch']?.rich_text?.[0]?.text?.content || '',
+      submitted:   p['Submitted']?.date?.start || page.created_time?.slice(0, 10) || '',
+      stage:       p['Stage']?.status?.name || '',
+      programs:    (p['Program / Country']?.multi_select || []).map(s => s.name),
+      advisor:     (p['Advisor']?.people || []).map(u => u.name).join(', '),
+      budget:      p['Budget range']?.rich_text?.[0]?.text?.content || '',
+      createdTime: page.created_time,
+    }
+  })
+
+  return { questionnaires, configured: true, hasMore: data.has_more }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
