@@ -245,8 +245,25 @@ export default {
         return json(await notionUpdateConsultation(pageId, request, env))
       }
 
-      // ── Consulting: Questionnaire / KYC Intake (stage 2, read-only — clients submit via Notion form) ──
-      if (pathname === '/api/notion/questionnaires') { requireConsultingKey(request, env); return json(await notionListQuestionnaires(env)) }
+      // ── Consulting: Questionnaire / KYC Intake (stage 2) ──
+      //    GET  → list submissions · POST → guided intake (creates KYC row + linked consultation)
+      //    GET /:id → full single record (for report / follow-up drafting)
+      if (pathname === '/api/notion/questionnaires' && request.method === 'POST') { requireConsultingKey(request, env); return json(await notionCreateKyc(request, env)) }
+      if (pathname === '/api/notion/questionnaires')                              { requireConsultingKey(request, env); return json(await notionListQuestionnaires(env)) }
+      if (pathname.startsWith('/api/notion/questionnaires/')) {
+        requireConsultingKey(request, env)
+        const pageId = pathname.split('/').pop()
+        return json(await notionGetKyc(pageId, env))
+      }
+
+      // ── Consulting: KYC field schema (form-render contract, shared by all surfaces) ──
+      if (pathname === '/api/consulting/kyc-schema') { requireConsultingKey(request, env); return json({ sections: KYC_SECTIONS }) }
+
+      // ── Consulting: follow-up queue (due / overdue open consultations) ──
+      if (pathname === '/api/consulting/followups') { requireConsultingKey(request, env); return json(await consultingFollowups(env)) }
+
+      // ── Consulting: AI draft (bilingual follow-up message OR advisory report) ──
+      if (pathname === '/api/consulting/draft' && request.method === 'POST') { requireConsultingKey(request, env); return json(await consultingDraft(request, env)) }
 
       return json({ error: 'Not found' }, 404)
     } catch (e) {
@@ -750,6 +767,274 @@ async function notionListQuestionnaires(env) {
   })
 
   return { questionnaires, configured: true, hasMore: data.has_more }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONSULTING — Guided KYC Intake (stage 2, live-fill walkthrough)
+//
+//  KYC_SECTIONS is the single source of truth for the form: the worker renders
+//  the field contract at /api/consulting/kyc-schema and every surface (dashboard
+//  console, homepage / partner-gateway panels) builds the same form from it.
+//  `k` = form key · `notion` = Notion property name · `vi`/`en` = bilingual label.
+//  All KYC fields are rich_text in Notion except the ones flagged `t:` below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KYC_PROGRAMS = [
+  '🇰🇳 St. Kitts & Nevis', '🇬🇩 Grenada', '🇹🇷 Thổ Nhĩ Kỳ', '🇬🇷 Hy Lạp',
+  '🇵🇹 Bồ Đào Nha', '🇨🇾 Síp', '🇭🇺 Hungary', '🇦🇪 Dubai UAE',
+  '🇬🇧 Vương quốc Anh', '🇹🇭 Thái Lan', '🇲🇾 Malaysia', '🇲🇹 Malta',
+  '🇵🇦 Panama', '🇻🇳 Việt Nam', '🔍 Chưa xác định',
+]
+
+const KYC_SECTIONS = [
+  { id: 'A', vi: 'Danh tính & liên hệ', en: 'Identity & contact', fields: [
+    { k: 'namePassport', notion: 'Client name (as per passport)', t: 'title', vi: 'Họ tên (theo hộ chiếu)', en: 'Name (as per passport)' },
+    { k: 'nameVi',       notion: 'Họ tên đầy đủ (VI)',            vi: 'Họ tên đầy đủ (tiếng Việt)', en: 'Full legal name (VI)' },
+    { k: 'nameEn',       notion: 'Full legal name (EN)',          vi: 'Họ tên đầy đủ (tiếng Anh)',  en: 'Full legal name (EN)' },
+    { k: 'nationality',  notion: 'Nationality / Quốc tịch',       vi: 'Quốc tịch', en: 'Nationality' },
+    { k: 'passport',     notion: 'Passport no. & expiry',         vi: 'Số hộ chiếu & ngày hết hạn', en: 'Passport no. & expiry' },
+    { k: 'email',        notion: null, consult: 'email',          vi: 'Email', en: 'Email' },
+    { k: 'phone',        notion: null, consult: 'phone',          vi: 'Số điện thoại', en: 'Phone' },
+    { k: 'marital',      notion: 'Marital status',                vi: 'Tình trạng hôn nhân', en: 'Marital status' },
+    { k: 'dependents',   notion: 'Dependents',                    vi: 'Người phụ thuộc', en: 'Dependents' },
+  ]},
+  { id: 'B', vi: 'Chương trình quan tâm', en: 'Program interest', fields: [
+    { k: 'programs',         notion: 'Program / Country', t: 'multi', options: KYC_PROGRAMS, consult: 'programs', vi: 'Chương trình / Quốc gia', en: 'Program / Country' },
+    { k: 'objective',        notion: 'Primary objective (growth / yield / residency / hedge)', vi: 'Mục tiêu chính (tăng trưởng / lợi suất / cư trú / phòng vệ)', en: 'Primary objective (growth / yield / residency / hedge)' },
+    { k: 'seekingResidency', notion: 'Seeking residency via this program?', vi: 'Có tìm kiếm cư trú qua chương trình này?', en: 'Seeking residency via this program?' },
+    { k: 'relocation',       notion: 'Long-term relocation plan', vi: 'Kế hoạch tái định cư dài hạn', en: 'Long-term relocation plan' },
+  ]},
+  { id: 'C', vi: 'Vốn & nguồn tài sản', en: 'Capital & source of wealth', fields: [
+    { k: 'liquidCapital',   notion: 'Liquid capital available',        vi: 'Vốn khả dụng (tiền mặt)', en: 'Liquid capital available' },
+    { k: 'netWorth',        notion: 'Estimated net worth range',       vi: 'Ước tính giá trị tài sản ròng', en: 'Estimated net worth range' },
+    { k: 'sourceWealth',    notion: 'Primary source of wealth',        vi: 'Nguồn tài sản chính', en: 'Primary source of wealth' },
+    { k: 'budget',          notion: 'Budget range',                    vi: 'Khoảng ngân sách', en: 'Budget range' },
+    { k: 'financing',       notion: 'Financing or full cash?',         vi: 'Vay tài chính hay toàn tiền mặt?', en: 'Financing or full cash?' },
+    { k: 'fundsHeld',       notion: 'Where are funds held (VN / Offshore)', vi: 'Nguồn tiền đang giữ ở đâu (VN / Nước ngoài)', en: 'Where are funds held (VN / Offshore)' },
+    { k: 'legalTransfer',   notion: 'Legally transfer funds from Vietnam?', vi: 'Chuyển tiền hợp pháp từ Việt Nam?', en: 'Legally transfer funds from Vietnam?' },
+    { k: 'bankStatements',  notion: '6-month bank statements?',         vi: 'Sao kê ngân hàng 6 tháng?', en: '6-month bank statements?' },
+    { k: 'offshoreBanking', notion: 'Offshore banking access',         vi: 'Có tài khoản ngân hàng nước ngoài?', en: 'Offshore banking access' },
+  ]},
+  { id: 'D', vi: 'Ưu tiên đầu tư', en: 'Investment preferences', fields: [
+    { k: 'horizon',        notion: 'Investment horizon',          vi: 'Kỳ hạn đầu tư', en: 'Investment horizon' },
+    { k: 'risk',           notion: 'Risk tolerance',              vi: 'Khẩu vị rủi ro', en: 'Risk tolerance' },
+    { k: 'expectedReturn', notion: 'Expected annual return (%)',  vi: 'Lợi nhuận kỳ vọng/năm (%)', en: 'Expected annual return (%)' },
+    { k: 'propertyType',   notion: 'Property type (apartment/villa/commercial)', vi: 'Loại BĐS (căn hộ/biệt thự/thương mại)', en: 'Property type (apartment/villa/commercial)' },
+    { k: 'preferredCity',  notion: 'Preferred city/area',         vi: 'Thành phố/khu vực ưu tiên', en: 'Preferred city/area' },
+    { k: 'currency',       notion: 'Preferred transaction currency', vi: 'Loại tiền giao dịch ưu tiên', en: 'Preferred transaction currency' },
+    { k: 'allocation',     notion: 'Allocation size for this program (%)', vi: 'Quy mô phân bổ cho chương trình (%)', en: 'Allocation size for this program (%)' },
+    { k: 'purchaseEntity', notion: 'Purchase under personal or company name?', vi: 'Mua dưới tên cá nhân hay công ty?', en: 'Purchase under personal or company name?' },
+    { k: 'rentalMgmt',     notion: 'Rental management required?',  vi: 'Cần quản lý cho thuê?', en: 'Rental management required?' },
+  ]},
+  { id: 'E', vi: 'Thuế & cư trú', en: 'Tax & residency', fields: [
+    { k: 'taxResidence',    notion: 'Country of tax residence',   vi: 'Quốc gia cư trú thuế', en: 'Country of tax residence' },
+    { k: 'globalTax',       notion: 'Subject to global income tax?', vi: 'Chịu thuế thu nhập toàn cầu?', en: 'Subject to global income tax?' },
+    { k: 'taxAdvisor',      notion: 'Do you have a tax advisor?',  vi: 'Có cố vấn thuế?', en: 'Do you have a tax advisor?' },
+    { k: 'taxAware',        notion: 'Aware of home-country tax implications?', vi: 'Hiểu về hệ quả thuế tại quốc gia nhà?', en: 'Aware of home-country tax implications?' },
+    { k: 'otherResidencies', notion: 'Other residencies held',    vi: 'Các cư trú khác đang có', en: 'Other residencies held' },
+    { k: 'daysPerYear',     notion: 'Days per year in target country', vi: 'Số ngày/năm tại quốc gia đích', en: 'Days per year in target country' },
+    { k: 'schooling',       notion: 'Schooling requirement',      vi: 'Nhu cầu về trường học', en: 'Schooling requirement' },
+  ]},
+  { id: 'F', vi: 'Tuân thủ', en: 'Compliance', fields: [
+    { k: 'pep',            notion: 'PEP status',                   vi: 'Trạng thái PEP (nhân vật chính trị)', en: 'PEP status' },
+    { k: 'trustStructure', notion: 'Existing holding/trust structure', vi: 'Cấu trúc holding/trust hiện có', en: 'Existing holding/trust structure' },
+  ]},
+]
+
+// Flatten to a lookup used by the writers/readers.
+const KYC_ALL_FIELDS = KYC_SECTIONS.flatMap(s => s.fields)
+
+// Follow-up default: +3 business days from today.
+function addBusinessDays(fromIso, n) {
+  const d = new Date(fromIso + 'T00:00:00Z')
+  let added = 0
+  while (added < n) {
+    d.setUTCDate(d.getUTCDate() + 1)
+    const day = d.getUTCDay()
+    if (day !== 0 && day !== 6) added++
+  }
+  return d.toISOString().slice(0, 10)
+}
+
+// Create a KYC Intake row from the guided form, then create a linked Initial
+// Consultation record (so profile ↔ meeting ↔ follow-up are joined). Returns both.
+async function notionCreateKyc(request, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const b     = await request.json()
+  const today = new Date().toISOString().slice(0, 10)
+  const props = {
+    'Submitted': { date: { start: b.submitted || today } },
+    'Stage':     { status: { name: 'New' } },
+  }
+
+  // Map the KYC fields (skip consult-only fields like email/phone → they go on the consultation).
+  for (const f of KYC_ALL_FIELDS) {
+    if (!f.notion) continue
+    const v = b[f.k]
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) continue
+    if (f.t === 'title')      props[f.notion] = { title: [{ text: { content: String(v).slice(0, 1999) } }] }
+    else if (f.t === 'multi') props[f.notion] = { multi_select: v.map(x => ({ name: x })) }
+    else                      props[f.notion] = { rich_text: [{ text: { content: String(v).slice(0, 1999) } }] }
+  }
+
+  const kycRes  = await fetch(`${NOTION_API}/pages`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ parent: { database_id: NOTION_QUESTIONNAIRE_DB_ID }, properties: props }),
+  })
+  const kyc = await kycRes.json()
+  if (!kycRes.ok) throw new Error(kyc.message || `Notion error (KYC): ${kycRes.status}`)
+
+  // Build the linked consultation record.
+  const followUp = b.followUp || addBusinessDays(today, 3)
+  const cProps = {
+    'Client Name':       { title: [{ text: { content: b.namePassport || b.nameEn || b.nameVi || 'Unnamed client' } }] },
+    'Consultation Date': { date: { start: b.consultDate || today } },
+    'Follow-up Date':    { date: { start: followUp } },
+    'Related Questionnaire': { relation: [{ id: kyc.id }] },
+  }
+  if (b.email)   cProps['Client Email'] = { email: b.email }
+  if (b.phone)   cProps['Client Phone'] = { phone_number: b.phone }
+  if (b.format)  cProps['Meeting Format'] = { select: { name: b.format } }
+  if (b.notes)   cProps['Client Goals / Notes'] = { rich_text: [{ text: { content: String(b.notes).slice(0, 1999) } }] }
+  if (Array.isArray(b.programs) && b.programs.length) {
+    cProps['Programs Discussed'] = { multi_select: b.programs.map(p => ({ name: p })) }
+  }
+  if (b.relatedLeadId) cProps['Related Lead'] = { relation: [{ id: b.relatedLeadId }] }
+
+  let consult = null
+  const cRes = await fetch(`${NOTION_API}/pages`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({ parent: { database_id: NOTION_CONSULT_DB_ID }, properties: cProps }),
+  })
+  consult = await cRes.json()
+  if (!cRes.ok) {
+    // KYC saved but consultation failed — surface it, don't lose the intake.
+    return { created: true, kycId: kyc.id, kycUrl: kyc.url, consultationError: consult.message || `Notion error (consult): ${cRes.status}`, followUp }
+  }
+
+  return { created: true, kycId: kyc.id, kycUrl: kyc.url, consultationId: consult.id, consultationUrl: consult.url, followUp }
+}
+
+// Fetch one full KYC record as flat readable {label,value} pairs (for AI drafting + detail view).
+async function notionGetKyc(pageId, env) {
+  if (!env.NOTION_API_TOKEN) throw new Error('NOTION_API_TOKEN not configured')
+
+  const res  = await fetch(`${NOTION_API}/pages/${pageId}`, { headers: notionHeaders(env) })
+  const page = await res.json()
+  if (!res.ok) throw new Error(page.message || `Notion error: ${res.status}`)
+
+  const p = page.properties || {}
+  const readProp = (prop) => {
+    if (!prop) return ''
+    if (prop.type === 'title')        return (prop.title || []).map(t => t.plain_text).join('')
+    if (prop.type === 'rich_text')    return (prop.rich_text || []).map(t => t.plain_text).join('')
+    if (prop.type === 'multi_select') return (prop.multi_select || []).map(s => s.name).join(', ')
+    if (prop.type === 'select')       return prop.select?.name || ''
+    if (prop.type === 'status')       return prop.status?.name || ''
+    if (prop.type === 'date')         return prop.date?.start || ''
+    if (prop.type === 'email')        return prop.email || ''
+    if (prop.type === 'phone_number') return prop.phone_number || ''
+    if (prop.type === 'people')       return (prop.people || []).map(u => u.name).join(', ')
+    return ''
+  }
+
+  const fields = {}
+  for (const [name, prop] of Object.entries(p)) {
+    const v = readProp(prop)
+    if (v) fields[name] = v
+  }
+  return { id: page.id, url: page.url, fields }
+}
+
+// Due / overdue open consultations (follow-up date ≤ today, not closed).
+async function consultingFollowups(env) {
+  if (!env.NOTION_API_TOKEN) return { followups: [], configured: false }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const res  = await fetch(`${NOTION_API}/databases/${NOTION_CONSULT_DB_ID}/query`, {
+    method: 'POST',
+    headers: notionHeaders(env),
+    body: JSON.stringify({
+      filter: {
+        and: [
+          { property: 'Follow-up Date', date: { on_or_before: today } },
+          { property: 'Follow-up Date', date: { is_not_empty: true } },
+        ],
+      },
+      sorts: [{ property: 'Follow-up Date', direction: 'ascending' }],
+      page_size: 50,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `Notion error: ${res.status}`)
+
+  const CLOSED = ['Done', 'Won', 'Lost', 'Not a fit', 'Closed']
+  const followups = (data.results || []).map(page => {
+    const p = page.properties
+    return {
+      id:        page.id,
+      notionUrl: page.url,
+      name:      p['Client Name']?.title?.[0]?.plain_text || '',
+      email:     p['Client Email']?.email || '',
+      phone:     p['Client Phone']?.phone_number || '',
+      followUp:  p['Follow-up Date']?.date?.start || '',
+      stage:     p['Stage']?.status?.name || '',
+      outcome:   p['Outcome']?.select?.name || '',
+      programs:  (p['Programs Discussed']?.multi_select || []).map(s => s.name),
+      notes:     p['Client Goals / Notes']?.rich_text?.[0]?.plain_text || '',
+      overdue:   (p['Follow-up Date']?.date?.start || today) < today,
+    }
+  }).filter(f => !CLOSED.includes(f.stage) && !CLOSED.includes(f.outcome))
+
+  return { followups, configured: true }
+}
+
+// AI draft: bilingual follow-up message OR advisory report, from a client's data.
+async function consultingDraft(request, env) {
+  if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  const b    = await request.json()
+  const kind = b.kind === 'report' ? 'report' : 'followup'
+  const rec  = b.record || {}
+
+  // Compact the record into a readable brief.
+  const brief = Object.entries(rec).map(([k, v]) => `- ${k}: ${v}`).join('\n')
+
+  const SYSTEMS = {
+    followup: `You are a senior advisor at Nomad Asset Collective (NAC), a bilingual Vietnamese/English investment-migration & real-estate advisory. Write a warm, professional follow-up message to a prospective client after their initial consultation. Reference their specific situation. Keep it concise (max ~140 words per language). Output EXACTLY this format with no preamble:\n\n[VI]\n<Vietnamese message>\n\n[EN]\n<English message>`,
+    report:   `You are a senior advisor at Nomad Asset Collective (NAC), a bilingual Vietnamese/English investment-migration & real-estate advisory. From the client's KYC intake, write a formal advisory summary: (1) client snapshot, (2) recommended program(s) with rationale tied to their objective/capital/tax situation, (3) key considerations/risks, (4) concrete next steps. Be specific to their data; never invent facts not present. Output EXACTLY this format with no preamble:\n\n[VI]\n<Vietnamese report, use clear headings>\n\n[EN]\n<English report, use clear headings>`,
+  }
+
+  const claudeRes = await fetch(ANTHROPIC, {
+    method: 'POST',
+    headers: {
+      'x-api-key':         env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type':      'application/json',
+    },
+    body: JSON.stringify({
+      model:      CLAUDE_MODEL,
+      max_tokens: kind === 'report' ? 2048 : 1024,
+      system:     SYSTEMS[kind],
+      messages:   [{ role: 'user', content: `Client data:\n${brief}` }],
+    }),
+  })
+  const data = await claudeRes.json()
+  if (!claudeRes.ok) throw new Error(data.error?.message || 'Claude API error')
+
+  const text = data.content?.[0]?.text || ''
+  // Split into VI / EN halves for the UI.
+  const viMatch = text.match(/\[VI\]([\s\S]*?)(?=\[EN\]|$)/)
+  const enMatch = text.match(/\[EN\]([\s\S]*)$/)
+  return {
+    kind,
+    vi: (viMatch?.[1] || '').trim(),
+    en: (enMatch?.[1] || text).trim(),
+    raw: text,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
