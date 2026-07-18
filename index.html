@@ -2070,18 +2070,96 @@ body {
         </div>
       </div>
 
-      <!-- Stage 2: Questionnaire (read-only, clients submit via Notion form) -->
+      <!-- Follow-ups due -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>⏰</span>
+          <div class="panel-title">Follow-ups Due</div>
+          <span id="fu-count" style="font-size:11px;color:var(--gray-400);margin-left:8px;"></span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadFollowups()">↻ Refresh</button>
+        </div>
+        <div class="panel-body">
+          <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px;padding:8px 12px;background:var(--gray-50);border-radius:6px;">
+            Open consultations whose follow-up date is today or earlier. Each intake auto-stamps a follow-up (+3 business days) —
+            close the loop here with a one-click WhatsApp handoff or an AI-drafted bilingual message.
+          </div>
+        </div>
+        <div class="panel-body no-pad" id="fu-list-body">
+          <div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">Đang tải...</div>
+        </div>
+      </div>
+
+      <!-- Stage 2: Guided KYC Intake (agent walks the client through, live) -->
       <div class="panel mb-20">
         <div class="panel-head">
           <span>🧾</span>
-          <div class="panel-title">Stage 2 — Questionnaire Submissions</div>
+          <div class="panel-title">Stage 2 — Guided KYC Intake</div>
+          <span style="font-size:11px;color:var(--gray-400);margin-left:auto;">Walk a client through the full profile — saves &amp; auto-links a consultation</span>
+        </div>
+        <div class="panel-body">
+          <div id="kyc-form-collapsed" style="text-align:center;padding:8px;">
+            <button class="btn btn-primary" onclick="openKycForm()">＋ Start new KYC intake</button>
+          </div>
+          <div id="kyc-form-wrap" style="display:none;">
+            <!-- Consultation header -->
+            <div class="leadgen-form-grid-3">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Consultation Date</label>
+                <input class="form-input" id="kyc-consultDate" type="date">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Meeting Format</label>
+                <select class="form-select" id="kyc-format">
+                  <option value="In-person">In-person</option>
+                  <option value="Video Call">Video Call</option>
+                  <option value="Phone">Phone</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Follow-up Date <span style="font-size:10px;color:var(--gray-400)">(auto +3 biz days if blank)</span></label>
+                <input class="form-input" id="kyc-followUp" type="date">
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div style="display:flex;align-items:center;gap:10px;margin:6px 0 14px;">
+              <div style="flex:1;height:6px;background:var(--gray-100);border-radius:99px;overflow:hidden;">
+                <div id="kyc-progress-bar" style="height:100%;width:0%;background:var(--primary);transition:width .25s;"></div>
+              </div>
+              <span id="kyc-progress-label" style="font-size:11px;color:var(--gray-400);white-space:nowrap;">0% complete</span>
+            </div>
+
+            <!-- Sections build here -->
+            <div id="kyc-sections"></div>
+
+            <div class="form-group" style="margin:14px 0 16px;">
+              <label class="form-label">Advisor notes / next steps</label>
+              <textarea class="form-textarea" id="kyc-notes" placeholder="Meeting notes, concerns, agreed next steps…"></textarea>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-primary" id="kyc-save-btn" onclick="saveKyc()">💾 Save intake + create consultation</button>
+              <button class="btn btn-ghost" onclick="closeKycForm()">✕ Cancel</button>
+              <span id="kyc-status" style="font-size:12px;color:var(--gray-400);"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 2: Questionnaire submissions list -->
+      <div class="panel mb-20">
+        <div class="panel-head">
+          <span>🧾</span>
+          <div class="panel-title">Questionnaire Submissions</div>
           <span id="qn-count" style="font-size:11px;color:var(--gray-400);margin-left:8px;"></span>
           <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadQuestionnaires()">↻ Refresh</button>
         </div>
         <div class="panel-body">
           <div style="font-size:11px;color:var(--gray-400);margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:6px;">
-            Clients fill this in directly via the shared KYC Intake Notion form (bilingual VI/EN) — this list is read-only,
-            for staff visibility. <a href="https://app.notion.com/p/fffac8e92444446d89b6f5b6378c8638" target="_blank" rel="noopener">Open in Notion →</a>
+            Intakes saved via the guided form above, plus any clients who filled the shared KYC Intake Notion form directly.
+            Use <strong>📄 Report</strong> on a row for an AI-drafted bilingual advisory summary.
+            <a href="https://app.notion.com/p/fffac8e92444446d89b6f5b6378c8638" target="_blank" rel="noopener">Open DB in Notion →</a>
           </div>
         </div>
         <div class="panel-body no-pad" id="qn-list-body">
@@ -2089,6 +2167,36 @@ body {
         </div>
       </div>
 
+    </div>
+
+    <!-- AI draft / report modal -->
+    <div id="cs-draft-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);">
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--gray-100);position:sticky;top:0;background:#fff;">
+          <span id="cs-draft-title" style="font-weight:700;">AI draft</span>
+          <span id="cs-draft-sub" style="font-size:12px;color:var(--gray-400);"></span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="closeDraftModal()">✕ Close</button>
+        </div>
+        <div style="padding:20px;">
+          <div id="cs-draft-loading" style="text-align:center;padding:30px;font-size:13px;color:var(--gray-400);">✨ Drafting with Claude…</div>
+          <div id="cs-draft-body" style="display:none;">
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <strong style="font-size:12px;">🇻🇳 Tiếng Việt</strong>
+                <button class="btn btn-ghost btn-sm" onclick="copyDraft('vi')">📋 Copy</button>
+              </div>
+              <pre id="cs-draft-vi" style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.5;background:var(--gray-50);padding:12px;border-radius:8px;margin:0;"></pre>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <strong style="font-size:12px;">🇬🇧 English</strong>
+                <button class="btn btn-ghost btn-sm" onclick="copyDraft('en')">📋 Copy</button>
+              </div>
+              <pre id="cs-draft-en" style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.5;background:var(--gray-50);padding:12px;border-radius:8px;margin:0;"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════════ TASKS PAGE ═══════════════ -->
@@ -2354,7 +2462,7 @@ function nav(page) {
       window._csLoaded = true;
       const csDate = document.getElementById('cs-date');
       if (csDate && !csDate.value) csDate.value = new Date().toISOString().slice(0,10);
-      loadConsultations(); loadQuestionnaires();
+      loadConsultations(); loadQuestionnaires(); loadFollowups();
     }
     runCounterAnimations();
     attachRipples();
@@ -4346,12 +4454,226 @@ function renderQuestionnaireTable(rows) {
             <td>${statusBadge ? statusBadge(r.stage) : escH(r.stage||'—')}</td>
             <td style="font-size:11px;color:var(--gray-400);white-space:nowrap;">${escH(r.submitted||'—')}</td>
             <td style="white-space:nowrap;">
+              <button class="btn btn-ghost btn-sm" title="AI advisory report" onclick="generateReport('${escH(r.id)}')">📄</button>
               ${r.notionUrl ? `<a href="${escH(r.notionUrl)}" target="_blank" class="btn btn-ghost btn-sm" title="Mở Notion" style="text-decoration:none;">📋</a>` : ''}
             </td>
           </tr>`).join('')}
       </tbody>
     </table>
     </div>`
+}
+
+// ═══════════════════════════════════════════════════
+//  CONSULTING — Guided KYC intake, follow-ups, AI drafts
+// ═══════════════════════════════════════════════════
+
+let KYC_SCHEMA = null;
+
+async function openKycForm() {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  document.getElementById('kyc-form-collapsed').style.display = 'none'
+  document.getElementById('kyc-form-wrap').style.display = 'block'
+  const host = document.getElementById('kyc-sections')
+  if (KYC_SCHEMA) { return }
+  host.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--gray-400);">Loading form…</div>'
+  try {
+    const res = await fetch(`${workerUrl}/api/consulting/kyc-schema`, { headers: csHeaders() })
+    if (res.status === 401) { host.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#ef4444;">🔒 Set the access key in ⚙️ API Settings.</div>'; return }
+    const data = await res.json()
+    KYC_SCHEMA = data.sections || []
+    renderKycSections()
+  } catch (e) {
+    host.innerHTML = `<div style="padding:16px;text-align:center;font-size:12px;color:#ef4444;">❌ ${escH(e.message)}</div>`
+  }
+}
+
+function renderKycSections() {
+  const host = document.getElementById('kyc-sections')
+  host.innerHTML = KYC_SCHEMA.map(sec => `
+    <details ${sec.id === 'A' ? 'open' : ''} style="border:1px solid var(--gray-100);border-radius:10px;margin-bottom:10px;overflow:hidden;">
+      <summary style="cursor:pointer;padding:11px 14px;font-weight:700;font-size:13px;background:var(--gray-50);list-style:none;display:flex;align-items:center;gap:8px;">
+        <span style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;align-items:center;justify-content:center;font-size:11px;">${escH(sec.id)}</span>
+        ${escH(sec.en)} <span style="font-weight:400;color:var(--gray-400);font-size:11px;">· ${escH(sec.vi)}</span>
+      </summary>
+      <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+        ${sec.fields.map(f => kycFieldHtml(f)).join('')}
+      </div>
+    </details>`).join('')
+  host.querySelectorAll('input,select,textarea').forEach(el => el.addEventListener('input', updateKycProgress))
+  updateKycProgress()
+}
+
+function kycFieldHtml(f) {
+  const label = `<label class="form-label" style="display:block;">${escH(f.en)} <span style="color:var(--gray-400);font-weight:400;">· ${escH(f.vi)}</span></label>`
+  if (f.t === 'multi') {
+    return `<div class="form-group" style="margin:0;grid-column:1/-1;">
+      ${label}
+      <select class="form-select kyc-in" data-k="${escH(f.k)}" multiple size="4" style="height:auto;min-height:88px;">
+        ${(f.options||[]).map(o => `<option value="${escH(o)}">${escH(o)}</option>`).join('')}
+      </select>
+      <div style="font-size:10px;color:var(--gray-400);margin-top:3px;">Ctrl/Cmd + click để chọn nhiều</div>
+    </div>`
+  }
+  const type = f.k === 'email' ? 'email' : 'text'
+  return `<div class="form-group" style="margin:0;">
+    ${label}
+    <input class="form-input kyc-in" data-k="${escH(f.k)}" type="${type}" placeholder="">
+  </div>`
+}
+
+function collectKyc() {
+  const out = {}
+  document.querySelectorAll('#kyc-sections .kyc-in').forEach(el => {
+    const k = el.getAttribute('data-k')
+    if (el.multiple) { const v = Array.from(el.selectedOptions).map(o => o.value); if (v.length) out[k] = v }
+    else if (el.value.trim()) out[k] = el.value.trim()
+  })
+  return out
+}
+
+function updateKycProgress() {
+  if (!KYC_SCHEMA) return
+  const total = KYC_SCHEMA.reduce((n, s) => n + s.fields.length, 0)
+  const filled = Object.keys(collectKyc()).length
+  const pct = total ? Math.round(filled / total * 100) : 0
+  document.getElementById('kyc-progress-bar').style.width = pct + '%'
+  document.getElementById('kyc-progress-label').textContent = `${pct}% complete · ${filled}/${total}`
+}
+
+function closeKycForm() {
+  document.getElementById('kyc-form-wrap').style.display = 'none'
+  document.getElementById('kyc-form-collapsed').style.display = 'block'
+}
+
+async function saveKyc() {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  const btn = document.getElementById('kyc-save-btn')
+  const statusEl = document.getElementById('kyc-status')
+  const payload = collectKyc()
+
+  if (!payload.namePassport && !payload.nameEn && !payload.nameVi) {
+    statusEl.style.color = '#ef4444'; statusEl.textContent = '⚠️ At least a client name is required (section A).'; return
+  }
+  payload.consultDate = document.getElementById('kyc-consultDate').value || undefined
+  payload.format      = document.getElementById('kyc-format').value
+  payload.followUp    = document.getElementById('kyc-followUp').value || undefined
+  payload.notes       = document.getElementById('kyc-notes').value.trim()
+
+  btn.disabled = true; btn.textContent = '⏳ Saving…'; statusEl.textContent = ''
+  try {
+    const res = await fetch(`${workerUrl}/api/notion/questionnaires`, {
+      method: 'POST', headers: csHeaders(), body: JSON.stringify(payload),
+    })
+    if (res.status === 401) throw new Error('Invalid access key')
+    const data = await res.json()
+    if (data.created) {
+      btn.textContent = '✅ Saved!'
+      statusEl.style.color = 'var(--gray-400)'
+      statusEl.textContent = data.consultationError
+        ? `KYC saved, but consultation link failed: ${data.consultationError}`
+        : `Saved · follow-up ${data.followUp} · consultation created`
+      loadQuestionnaires(); loadConsultations(); loadFollowups()
+      setTimeout(() => { closeKycForm(); btn.textContent = '💾 Save intake + create consultation'; btn.disabled = false }, 1800)
+    } else { throw new Error(data.error || 'Unknown error') }
+  } catch (e) {
+    btn.textContent = '💾 Save intake + create consultation'; btn.disabled = false
+    statusEl.style.color = '#ef4444'; statusEl.textContent = `❌ ${e.message}`
+  }
+}
+
+// ── Follow-ups queue ──
+async function loadFollowups() {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  const bodyEl = document.getElementById('fu-list-body')
+  if (!bodyEl) return
+  if (!workerUrl) { bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Cần cấu hình Worker URL.</div>'; return }
+  bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">Đang tải...</div>'
+  try {
+    const res = await fetch(`${workerUrl}/api/consulting/followups`, { headers: csHeaders() })
+    if (res.status === 401) { bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#ef4444;">🔒 Invalid or missing access key.</div>'; return }
+    const data = await res.json()
+    if (!data.configured) { bodyEl.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--gray-400);">NOTION_API_TOKEN chưa cấu hình.</div>'; return }
+    renderFollowups(data.followups || [])
+    const badge = document.getElementById('fu-count')
+    if (badge) badge.textContent = `${(data.followups||[]).length} due`
+  } catch (e) { bodyEl.innerHTML = `<div style="padding:20px;text-align:center;font-size:12px;color:#ef4444;">❌ ${escH(e.message)}</div>` }
+}
+
+function renderFollowups(rows) {
+  const bodyEl = document.getElementById('fu-list-body')
+  if (!rows.length) { bodyEl.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--gray-400);">🎉 No follow-ups due. All caught up.</div>'; return }
+  bodyEl.innerHTML = `<div style="overflow-x:auto;"><table class="lead-table">
+    <thead><tr><th>Client</th><th>Programs</th><th>Follow-up</th><th>Stage</th><th></th></tr></thead>
+    <tbody>${rows.map(r => {
+      const wa = r.phone ? `https://wa.me/${r.phone.replace(/[^0-9]/g,'')}` : ''
+      return `<tr>
+        <td><div style="font-weight:600;">${escH(r.name||'—')}</div>
+            ${r.email ? `<div style="font-size:10px;color:var(--gray-400);">${escH(r.email)}</div>` : ''}</td>
+        <td style="max-width:150px;">${(r.programs||[]).slice(0,2).map(p=>`<span style="display:inline-block;font-size:10px;background:var(--primary-faint);color:var(--primary-dark);padding:1px 6px;border-radius:8px;margin:1px;">${escH(p)}</span>`).join('')||'—'}</td>
+        <td style="white-space:nowrap;font-size:11px;"><span style="color:${r.overdue?'#c62828':'var(--gray-600)'};font-weight:${r.overdue?'700':'400'};">${escH(r.followUp||'—')}${r.overdue?' ⚠️':''}</span></td>
+        <td>${statusBadge ? statusBadge(r.stage) : escH(r.stage||'—')}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-sm" title="AI follow-up draft" onclick="draftFollowup('${escH(r.id)}')">✨</button>
+          ${wa ? `<a href="${wa}" target="_blank" class="btn btn-ghost btn-sm" title="WhatsApp" style="text-decoration:none;">💬</a>` : ''}
+          ${r.notionUrl ? `<a href="${escH(r.notionUrl)}" target="_blank" class="btn btn-ghost btn-sm" title="Notion" style="text-decoration:none;">📋</a>` : ''}
+        </td></tr>`
+    }).join('')}</tbody></table></div>`
+}
+
+// ── AI drafts (follow-up message + advisory report) ──
+function openDraftModal(title, sub) {
+  document.getElementById('cs-draft-title').textContent = title
+  document.getElementById('cs-draft-sub').textContent = sub || ''
+  document.getElementById('cs-draft-loading').style.display = 'block'
+  document.getElementById('cs-draft-body').style.display = 'none'
+  document.getElementById('cs-draft-modal').style.display = 'flex'
+}
+function closeDraftModal() { document.getElementById('cs-draft-modal').style.display = 'none' }
+function fillDraft(d) {
+  document.getElementById('cs-draft-vi').textContent = d.vi || '(none)'
+  document.getElementById('cs-draft-en').textContent = d.en || '(none)'
+  document.getElementById('cs-draft-loading').style.display = 'none'
+  document.getElementById('cs-draft-body').style.display = 'block'
+}
+function copyDraft(lang) {
+  const t = document.getElementById(lang === 'vi' ? 'cs-draft-vi' : 'cs-draft-en').textContent
+  navigator.clipboard.writeText(t)
+}
+async function fetchRecordFields(id) {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  const res = await fetch(`${workerUrl}/api/notion/questionnaires/${id}`, { headers: csHeaders() })
+  if (!res.ok) throw new Error('Could not load record')
+  const data = await res.json()
+  return data.fields || {}
+}
+async function runDraft(kind, record, title, sub) {
+  const workerUrl = localStorage.getItem('nac_worker_url') || WORKER_URL
+  openDraftModal(title, sub)
+  try {
+    const res = await fetch(`${workerUrl}/api/consulting/draft`, {
+      method: 'POST', headers: csHeaders(), body: JSON.stringify({ kind, record }),
+    })
+    if (res.status === 401) throw new Error('Invalid access key')
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    fillDraft(data)
+  } catch (e) {
+    document.getElementById('cs-draft-loading').textContent = `❌ ${e.message}`
+  }
+}
+async function generateReport(id) {
+  try {
+    openDraftModal('📄 Advisory report', 'Loading client data…')
+    const fields = await fetchRecordFields(id)
+    runDraft('report', fields, '📄 Advisory report', fields['Client name (as per passport)'] || '')
+  } catch (e) { document.getElementById('cs-draft-loading').textContent = `❌ ${e.message}` }
+}
+async function draftFollowup(id) {
+  try {
+    openDraftModal('✨ Follow-up draft', 'Loading client data…')
+    const fields = await fetchRecordFields(id)
+    runDraft('followup', fields, '✨ Follow-up draft', fields['Client Name'] || fields['Client name (as per passport)'] || '')
+  } catch (e) { document.getElementById('cs-draft-loading').textContent = `❌ ${e.message}` }
 }
 </script>
 
