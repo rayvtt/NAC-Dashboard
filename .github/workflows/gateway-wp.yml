@@ -1,0 +1,42 @@
+name: Sync Client Gateway → WordPress
+
+# Publishes client-gateway.html to a WordPress page on nomadassetcollective.com
+# (ACF raw_html_code). Creates the page on first run, reuses it after.
+# Requires the WP_APP_PASSWORD secret (same value the other NAC repos use).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client-gateway.html'
+      - 'scripts/gateway-wp.mjs'
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'WP page status (private = editors only, publish = anyone with URL + token gate)'
+        required: false
+        default: 'private'
+        type: choice
+        options: [private, publish, draft]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sync gateway to WP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Publish gateway page
+        env:
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_STATUS: ${{ github.event.inputs.status || 'private' }}
+          WP_TEMPLATE_SAMPLE_SLUG: ${{ vars.WP_TEMPLATE_SAMPLE_SLUG }}
+        run: |
+          if [ -z "$WP_APP_PASSWORD" ]; then
+            echo "::warning::WP_APP_PASSWORD not set — skipping WP sync. Add the secret to enable it."
+            exit 0
+          fi
+          node scripts/gateway-wp.mjs
