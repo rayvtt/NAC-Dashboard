@@ -41,11 +41,13 @@ const NOTION_VER   = '2022-06-28'
 const NOTION_CONSULT_DB_ID = '14eef0d5-4c2d-4023-8d80-b8b916d9862d'
 // 🧾 KYC Intake (Đầu vào khách hàng) — generalized questionnaire, clients submit via Notion form
 const NOTION_QUESTIONNAIRE_DB_ID = 'fffac8e9-2444-446d-89b6-f5b6378c8638'
+// 🤝 NAC - Partners — access codes + gateway tool grants (joined into the Client Gateway)
+const NOTION_PARTNERS_DB_ID = 'a0402cbc-9b57-4ded-ac07-8e087228f19c'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, x-gateway-token, x-gateway-email',
 }
 
 // ── Agent personas ────────────────────────────────────────────────────────────
@@ -217,6 +219,13 @@ export default {
 
       // ── Consulting: Questionnaire / KYC Intake (stage 2, read-only — clients submit via Notion form) ──
       if (pathname === '/api/notion/questionnaires') return json(await notionListQuestionnaires(env))
+
+      // ── Client Gateway (blind CRM) — token-gated, assembles clients A→Z ──
+      if (pathname === '/api/gateway/clients') {
+        const denied = gatewayGuard(request, env)
+        if (denied) return denied
+        return json(await gatewayClients(env))
+      }
 
       return json({ error: 'Not found' }, 404)
     } catch (e) {
@@ -1243,4 +1252,147 @@ function b64url(str) {
 }
 function b64urlBytes(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CLIENT GATEWAY — blind CRM (token-gated), assembles clients A→Z from Notion
+//  Front-end: client-gateway.html. Real data is served ONLY past this guard.
+// ─────────────────────────────────────────────────────────────────────────────
+const GW_STAGES = 12 // mirrors the 12-step journey spine in client-gateway.html
+
+// Verify the access token (and optional email allowlist) server-side.
+// Returns a Response on failure, or null when authorized.
+function gatewayGuard(request, env) {
+  if (!env.GATEWAY_TOKEN) {
+    return json({ error: 'Gateway not configured — set GATEWAY_TOKEN on the worker.' }, 503)
+  }
+  const token = request.headers.get('x-gateway-token') || ''
+  const email = (request.headers.get('x-gateway-email') || '').trim().toLowerCase()
+  if (token !== env.GATEWAY_TOKEN) return json({ error: 'unauthorized' }, 401)
+  if (env.GATEWAY_EMAILS) {
+    const allow = env.GATEWAY_EMAILS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    if (allow.length && !allow.includes(email)) return json({ error: 'unauthorized' }, 401)
+  }
+  return null
+}
+
+const gwNorm = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+const GW_PROGRAM_FLAG = {
+  'malta':'🇲🇹 Malta','dao sip':'🇨🇾 Cyprus','sip':'🇨🇾 Cyprus','cyprus':'🇨🇾 Cyprus',
+  'hy lap':'🇬🇷 Greece','greece':'🇬🇷 Greece','bo dao nha':'🇵🇹 Portugal','portugal':'🇵🇹 Portugal',
+  'tho nhi ky':'🇹🇷 Turkey','turkey':'🇹🇷 Turkey','uae':'🇦🇪 UAE','dubai':'🇦🇪 UAE',
+  'anh':'🇬🇧 UK','uk':'🇬🇧 UK','thai lan':'🇹🇭 Thailand','thailand':'🇹🇭 Thailand',
+  'malaysia':'🇲🇾 Malaysia','panama':'🇵🇦 Panama','kitts':'🇰🇳 St Kitts','grenada':'🇬🇩 Grenada',
+  'new zealand':'🇳🇿 New Zealand','australia':'🇦🇺 Australia','nauru':'🇳🇷 Nauru','hungary':'🇭🇺 Hungary',
+}
+function gwProgramFlag(name) {
+  const n = gwNorm(name)
+  for (const k in GW_PROGRAM_FLAG) { if (n.includes(k)) return GW_PROGRAM_FLAG[k] }
+  return name
+}
+
+// Vietnamese Lead-CRM status → gateway status pill + appetite + stage index
+function gwStageFromStatus(status) {
+  switch (status) {
+    case '🆕 Mới':
+    case 'Mới':               return { status: ['New', 'info'],    appetite: ['TBD', 'muted'], stage: 0 }
+    case '📞 Đã liên hệ':      return { status: ['Active', 'good'], appetite: ['Warm', 'warn'], stage: 1 }
+    case '🔥 Tiềm năng':       return { status: ['Hot', 'warn'],    appetite: ['High', 'good'], stage: 3 }
+    case '✅ Chốt được':       return { status: ['Won', 'good'],    appetite: ['High', 'good'], stage: 6 }
+    case '❌ Không quan tâm':   return { status: ['Closed', 'muted'],appetite: ['Low', 'muted'], stage: 0 }
+    default:                  return { status: [status || '—', 'muted'], appetite: ['TBD', 'muted'], stage: 0 }
+  }
+}
+
+function gwSteps(stage) {
+  const notes = ['Consultation logged.', 'KYC / questionnaire.', 'Program shortlist.', 'Property selection.', 'Source of funds.', 'Reservation deposit.', 'Agreement & financing.', 'Government application.', 'Approval in principle.', 'Completion.', 'Residency / passport.', 'Handover & aftercare.']
+  const out = []
+  for (let i = 0; i < GW_STAGES; i++) out.push([i < stage ? 'done' : i === stage ? 'now' : 'todo', '—', i <= stage ? notes[i] : ''])
+  return out
+}
+
+async function notionListPartners(env) {
+  if (!env.NOTION_API_TOKEN) return []
+  try {
+    const res = await fetch(`${NOTION_API}/databases/${NOTION_PARTNERS_DB_ID}/query`, {
+      method: 'POST', headers: notionHeaders(env), body: JSON.stringify({ page_size: 100 }),
+    })
+    const data = await res.json()
+    if (!res.ok) return []
+    return (data.results || []).map(pg => {
+      const p = pg.properties
+      return {
+        name:       p['Partner']?.title?.[0]?.plain_text || '',
+        contact:    p['Contact Name']?.rich_text?.[0]?.plain_text || '',
+        code:       p['Access Code']?.rich_text?.[0]?.plain_text || '',
+        opens:      p['Access Opens']?.number || 0,
+        lastAccess: p['Last Access']?.date?.start || '',
+        added:      (pg.created_time || '').slice(0, 10),
+        material:   (p['Material Sent']?.multi_select || []).map(m => m.name),
+      }
+    })
+  } catch (_) { return [] }
+}
+
+function gwToolsFromPartner(partner) {
+  const tools = []
+  if (partner?.code) tools.push(['🏠', 'Property Hub', 'Live listings — yield/IRR/payback', ['Granted', 'brand'], partner.opens ? `Opened ${partner.opens}×` : 'Code issued — awaiting first open'])
+  const mat = partner?.material || []
+  if (mat.includes('📘 Country Brochure')) tools.push(['📘', 'Country Brochure', 'Program brief', ['Shared', 'info'], 'Link sent'])
+  if (mat.includes('🏠 Listing PDP'))      tools.push(['🏠', 'Listing PDP', 'Property detail', ['Shared', 'info'], 'Link sent'])
+  if (mat.includes('📊 Pitch Deck'))       tools.push(['📊', 'Pitch Deck', 'Overview deck', ['Shared', 'info'], 'Link sent'])
+  if (mat.includes('📈 Case Study'))       tools.push(['📈', 'Case Study', 'Worked example', ['Shared', 'info'], 'Link sent'])
+  if (!tools.length) tools.push(['🧰', 'No tools granted yet', '—', ['Pending', 'muted'], 'Issue an access code to begin'])
+  return tools
+}
+
+function mapLeadToClient(lead, partner, i) {
+  const meta  = gwStageFromStatus(lead.status)
+  const flags = (lead.program || []).map(gwProgramFlag)
+  const code  = partner?.code || ''
+  const touch = []
+  if (lead.date) touch.push([lead.date, 'Consult', 'Lead logged / contacted.', 0])
+  if (code)      touch.push([partner.added || lead.date || '—', 'Access', `Access code ${code} issued.`, 1])
+  return {
+    id: lead.id, real: true, av: i % 5,
+    name: lead.name || 'Unnamed',
+    email: lead.email || null, phone: lead.phone || null,
+    location: (lead.region || [])[0] || '—',
+    advisor: 'Ray Vũ', source: lead.source || '—',
+    status: meta.status, appetite: meta.appetite,
+    budget: lead.budget || null, cur: 'USD',
+    code: code || null,
+    codeIssued: partner?.added || '—',
+    codeOpens: partner?.opens || 0,
+    lastAccess: partner?.lastAccess || (code ? 'Not yet opened' : '—'),
+    programs: flags,
+    stage: meta.stage, progress: Math.round(meta.stage / GW_STAGES * 100),
+    notion: lead.notionUrl || null,
+    consult: {
+      date: lead.date || '—', format: '—', dur: '',
+      outcome: meta.stage > 0 ? ['Proceeding', 'good'] : null,
+      summary: lead.notes || 'No consultation summary logged yet.',
+      goals: [], concerns: [],
+    },
+    property: { status: flags.length ? ['Shortlisting', 'warn'] : ['—', 'muted'], locked: null, options: flags.slice(), note: lead.timeline || '' },
+    deal: null,
+    tools: gwToolsFromPartner(partner),
+    touch: touch.length ? touch : [['—', '—', 'No touchpoints logged.', 0]],
+    docs: [],
+    steps: gwSteps(meta.stage),
+    next: { body: lead.timeline || 'Follow up with the client.', due: '—', owner: 'Ray Vũ' },
+  }
+}
+
+async function gatewayClients(env) {
+  const [leadsRes, partners] = await Promise.all([notionListLeads(env), notionListPartners(env)])
+  if (!leadsRes.configured) return { clients: [], configured: false, error: 'NOTION_API_TOKEN not configured on the worker.' }
+  const byName = new Map()
+  for (const p of partners) {
+    if (p.contact) byName.set(gwNorm(p.contact), p)
+    if (p.name)    byName.set(gwNorm(p.name), p)
+  }
+  const clients = (leadsRes.leads || []).map((lead, i) => mapLeadToClient(lead, byName.get(gwNorm(lead.name)), i))
+  return { clients, configured: true, count: clients.length }
 }

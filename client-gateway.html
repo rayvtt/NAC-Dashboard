@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NAC · Client Gateway</title>
-<meta name="description" content="Internal consultant console — every client from first consultation to passport, A to Z.">
+<meta name="description" content="Internal consultant console — every client from first consultation to passport. Access-gated.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#060608">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,165 +14,184 @@
 <body>
 <!-- GW:ARTIFACT-BEGIN -->
 <style>
+/* ══ TOKENS — dark is the brand default; light is the override ══ */
 :root{
-  --bg:#060608; --bg-2:#0C0C10; --bg-3:#111118;
-  --card:rgba(255,255,255,.028); --card-2:rgba(255,255,255,.05);
+  --bg:#060608; --bg-2:#0C0C10; --bg-3:#12121A;
+  --card:rgba(255,255,255,.028); --card-2:rgba(255,255,255,.055);
+  --wash:rgba(255,255,255,.05); --track:rgba(255,255,255,.08); --hair:rgba(255,255,255,.08);
   --ink:#F0EDE8; --ink-2:#B7B0A8; --ink-3:#8A8078; --ink-4:#57524C;
   --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.05); --line-3:rgba(255,255,255,.14);
-  --brand:#1800AD; --brand-2:#4020E0; --brand-ink:#B9AEFF; --brand-faint:rgba(64,32,224,.16);
-  --orange:#F4622A; --orange-2:#FF9F1C; --orange-faint:rgba(244,98,42,.12);
+  --brand:#5B3BFF; --brand-2:#4020E0; --brand-ink:#BDB0FF; --brand-faint:rgba(91,59,255,.16);
+  --orange:#F4622A; --orange-2:#FF9F1C; --orange-faint:rgba(244,98,42,.13);
   --good:#34D399; --good-faint:rgba(52,211,153,.13);
   --warn:#FCD34D; --warn-faint:rgba(252,211,77,.13);
   --crit:#F87171; --crit-faint:rgba(248,113,113,.13);
   --info:#60A5FA; --info-faint:rgba(96,165,250,.13);
-  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
+  --shell:#0C0C10;
   --sh:0 4px 24px rgba(0,0,0,.45),0 0 0 .5px rgba(255,255,255,.05);
-  --sh-lg:0 24px 60px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.06);
+  --sh-lg:0 30px 70px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.07);
+  --atmos:radial-gradient(900px 520px at 82% -8%,rgba(91,59,255,.12),transparent 60%),radial-gradient(760px 480px at -6% 4%,rgba(244,98,42,.07),transparent 58%);
+  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
   --serif:'Instrument Serif','Iowan Old Style',Georgia,'Times New Roman',serif;
   --sans:'Outfit',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
   --rail-w:312px;
   color-scheme:dark;
 }
+/* LIGHT — considered warm-neutral, not an inversion */
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+  --bg:#F4F1EB; --bg-2:#FFFFFF; --bg-3:#FBF9F5;
+  --card:rgba(28,22,16,.022); --card-2:rgba(28,22,16,.05);
+  --wash:rgba(28,22,16,.045); --track:rgba(28,22,16,.10); --hair:rgba(28,22,16,.09);
+  --ink:#1C1712; --ink-2:#463F37; --ink-3:#726A5F; --ink-4:#A99F92;
+  --line:rgba(28,22,16,.12); --line-2:rgba(28,22,16,.07); --line-3:rgba(28,22,16,.18);
+  --brand:#3B1FD1; --brand-2:#2E17B0; --brand-ink:#3B1FC9; --brand-faint:rgba(59,31,209,.09);
+  --orange:#E24E14; --orange-2:#C2410C; --orange-faint:rgba(226,78,20,.10);
+  --good:#0E9F6E; --good-faint:rgba(14,159,110,.12);
+  --warn:#B45309; --warn-faint:rgba(180,83,9,.13);
+  --crit:#DC2626; --crit-faint:rgba(220,38,38,.10);
+  --info:#2563EB; --info-faint:rgba(37,99,235,.10);
+  --shell:#EEEAE2;
+  --sh:0 6px 22px rgba(40,32,22,.09),0 0 0 .5px rgba(28,22,16,.05);
+  --sh-lg:0 30px 70px rgba(40,32,22,.14),0 0 0 .5px rgba(28,22,16,.06);
+  --atmos:radial-gradient(900px 520px at 82% -8%,rgba(59,31,209,.07),transparent 60%),radial-gradient(760px 480px at -6% 4%,rgba(226,78,20,.05),transparent 58%);
+  color-scheme:light;
+}}
+:root[data-theme="light"]{
+  --bg:#F4F1EB; --bg-2:#FFFFFF; --bg-3:#FBF9F5;
+  --card:rgba(28,22,16,.022); --card-2:rgba(28,22,16,.05);
+  --wash:rgba(28,22,16,.045); --track:rgba(28,22,16,.10); --hair:rgba(28,22,16,.09);
+  --ink:#1C1712; --ink-2:#463F37; --ink-3:#726A5F; --ink-4:#A99F92;
+  --line:rgba(28,22,16,.12); --line-2:rgba(28,22,16,.07); --line-3:rgba(28,22,16,.18);
+  --brand:#3B1FD1; --brand-2:#2E17B0; --brand-ink:#3B1FC9; --brand-faint:rgba(59,31,209,.09);
+  --orange:#E24E14; --orange-2:#C2410C; --orange-faint:rgba(226,78,20,.10);
+  --good:#0E9F6E; --good-faint:rgba(14,159,110,.12);
+  --warn:#B45309; --warn-faint:rgba(180,83,9,.13);
+  --crit:#DC2626; --crit-faint:rgba(220,38,38,.10);
+  --info:#2563EB; --info-faint:rgba(37,99,235,.10);
+  --shell:#EEEAE2;
+  --sh:0 6px 22px rgba(40,32,22,.09),0 0 0 .5px rgba(28,22,16,.05);
+  --sh-lg:0 30px 70px rgba(40,32,22,.14),0 0 0 .5px rgba(28,22,16,.06);
+  --atmos:radial-gradient(900px 520px at 82% -8%,rgba(59,31,209,.07),transparent 60%),radial-gradient(760px 480px at -6% 4%,rgba(226,78,20,.05),transparent 58%);
+  color-scheme:light;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-html{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+html{scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 body{
   font-family:var(--sans); background:var(--bg); color:var(--ink);
-  font-size:14px; line-height:1.5; letter-spacing:-.011em;
+  font-size:14px; line-height:1.5; letter-spacing:-.011em; min-height:100vh;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  min-height:100vh;
+  transition:background .3s ease,color .3s ease;
 }
-body::before{
-  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
-  background:
-    radial-gradient(900px 500px at 82% -8%, rgba(64,32,224,.10), transparent 60%),
-    radial-gradient(760px 480px at -6% 4%, rgba(244,98,42,.06), transparent 58%);
-}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--atmos)}
 a{color:inherit;text-decoration:none}
-button{font-family:inherit}
-::selection{background:rgba(64,32,224,.4);color:#fff}
-:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px;border-radius:6px}
+button{font-family:inherit;color:inherit}
+::selection{background:var(--brand-faint)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.tnum{font-variant-numeric:tabular-nums}
+.hide{display:none!important}
 
-/* ── SHELL ── */
+/* ══ GATE (login) ══ */
+.gate{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px;background:var(--bg)}
+.gate::before{content:"";position:absolute;inset:0;background:var(--atmos);pointer-events:none}
+.gatecard{position:relative;width:100%;max-width:390px;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-xl);padding:34px 30px 28px;box-shadow:var(--sh-lg)}
+.gatemark{width:46px;height:46px;border-radius:13px;background:linear-gradient(150deg,var(--brand),var(--brand-2) 65%);display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;box-shadow:0 8px 22px rgba(64,32,224,.4),inset 0 1px 0 rgba(255,255,255,.3);margin-bottom:18px}
+.gatecard h1{font-family:var(--serif);font-size:29px;line-height:1.05;letter-spacing:.01em;margin-bottom:6px}
+.gatecard .sub{font-size:12.5px;color:var(--ink-3);margin-bottom:22px;line-height:1.5}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:600;margin-bottom:6px}
+.field input{width:100%;background:var(--bg-3);border:1px solid var(--line);color:var(--ink);padding:11px 13px;border-radius:11px;font-size:14px;font-family:inherit}
+.field input:focus{border-color:var(--brand)}
+.field input::placeholder{color:var(--ink-4)}
+.gate-btn{width:100%;margin-top:6px;padding:12px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(140deg,var(--brand),var(--brand-2));box-shadow:0 6px 18px rgba(64,32,224,.35);transition:filter .15s,transform .12s}
+.gate-btn:hover{filter:brightness(1.08)} .gate-btn:active{transform:translateY(1px)}
+.gate-btn[disabled]{opacity:.6;cursor:progress}
+.gate-err{font-size:12px;color:var(--crit);margin-top:11px;min-height:16px;line-height:1.4}
+.gate-foot{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:15px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--ink-3)}
+.gate-foot a{color:var(--brand-ink);font-weight:600;cursor:pointer}
+.gate-lock{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-4);margin-top:14px;justify-content:center;width:100%}
+
+/* ══ APP SHELL ══ */
 .app{position:relative;z-index:1;display:grid;grid-template-columns:var(--rail-w) 1fr;min-height:100vh}
-.topbar{
-  grid-column:1/-1; position:sticky; top:0; z-index:40;
-  display:flex; align-items:center; gap:16px;
-  padding:14px 24px; background:rgba(6,6,8,.82); backdrop-filter:blur(18px) saturate(1.2);
-  border-bottom:1px solid var(--line);
-}
+.topbar{grid-column:1/-1;position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:14px;padding:13px 22px;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(18px) saturate(1.2);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:11px;min-width:0}
-.brand-mark{
-  width:32px;height:32px;border-radius:9px;flex:none;
-  background:linear-gradient(150deg,var(--brand-2),var(--brand) 62%);
-  display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;
-  box-shadow:0 4px 16px rgba(64,32,224,.45),inset 0 1px 0 rgba(255,255,255,.28);
-}
+.brand-mark{width:32px;height:32px;border-radius:9px;flex:none;background:linear-gradient(150deg,var(--brand),var(--brand-2) 62%);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;box-shadow:0 4px 16px rgba(64,32,224,.4),inset 0 1px 0 rgba(255,255,255,.28)}
 .brand-txt{display:flex;flex-direction:column;line-height:1.05}
 .brand-txt b{font-weight:700;font-size:14.5px;letter-spacing:-.02em}
 .brand-txt span{font-size:10.5px;color:var(--ink-3);letter-spacing:.03em}
-.top-search{flex:1;max-width:340px;position:relative}
-.top-search input{
-  width:100%;background:var(--bg-3);border:1px solid var(--line);color:var(--ink);
-  padding:9px 12px 9px 34px;border-radius:10px;font-size:13px;font-family:inherit;
-}
+.top-search{flex:1;max-width:330px;position:relative}
+.top-search input{width:100%;background:var(--bg-3);border:1px solid var(--line);color:var(--ink);padding:9px 12px 9px 34px;border-radius:10px;font-size:13px;font-family:inherit}
 .top-search input::placeholder{color:var(--ink-4)}
 .top-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.4}
-.top-stats{display:flex;gap:10px;margin-left:auto}
-.tstat{
-  padding:6px 14px;border-radius:11px;background:var(--card);border:1px solid var(--line-2);
-  display:flex;flex-direction:column;line-height:1.15;min-width:76px;
-}
+.top-stats{display:flex;gap:9px;margin-left:auto}
+.tstat{padding:6px 13px;border-radius:11px;background:var(--card);border:1px solid var(--line-2);display:flex;flex-direction:column;line-height:1.15;min-width:74px}
 .tstat b{font-size:15px;font-weight:700;letter-spacing:-.02em}
-.tstat span{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
-.btn{
-  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;
-  font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--line-3);
-  background:var(--card-2);color:var(--ink);transition:transform .12s,background .18s,border-color .18s;
-}
-.btn:hover{background:rgba(255,255,255,.09)}
-.btn:active{transform:translateY(1px)}
-.btn-accent{background:linear-gradient(140deg,var(--brand-2),var(--brand));border-color:transparent;color:#fff;box-shadow:0 4px 16px rgba(64,32,224,.4)}
-.btn-accent:hover{filter:brightness(1.08);background:linear-gradient(140deg,var(--brand-2),var(--brand))}
+.tstat span{font-size:9.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line-3);background:var(--card-2);display:grid;place-items:center;cursor:pointer;font-size:15px;transition:background .16s}
+.iconbtn:hover{background:var(--wash)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--line-3);background:var(--card-2);color:var(--ink);transition:transform .12s,background .18s}
+.btn:hover{background:var(--wash)} .btn:active{transform:translateY(1px)}
+.btn-accent{background:linear-gradient(140deg,var(--brand),var(--brand-2));border-color:transparent;color:#fff;box-shadow:0 4px 16px rgba(64,32,224,.35)}
+.btn-accent:hover{filter:brightness(1.08)}
 .btn-sm{padding:6px 11px;font-size:11.5px;border-radius:9px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 
-/* ── RAIL ── */
-.rail{
-  border-right:1px solid var(--line); background:var(--bg-2);
-  min-height:calc(100vh - 61px); padding:16px 12px 40px;
-  position:sticky; top:61px; align-self:start; max-height:calc(100vh - 61px); overflow-y:auto;
-}
+/* demo banner */
+.demobar{grid-column:1/-1;display:flex;align-items:center;gap:9px;justify-content:center;padding:7px 14px;background:var(--warn-faint);color:var(--warn);font-size:11.5px;font-weight:600;border-bottom:1px solid var(--line-2)}
+.demobar b{text-transform:uppercase;letter-spacing:.06em;font-size:10px;background:var(--warn);color:#1a1205;padding:1px 7px;border-radius:5px}
+
+/* ══ RAIL ══ */
+.rail{border-right:1px solid var(--line);background:var(--shell);min-height:calc(100vh - 60px);padding:16px 12px 40px;position:sticky;top:60px;align-self:start;max-height:calc(100vh - 60px);overflow-y:auto}
 .rail-head{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 12px}
 .rail-head h2{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--ink-3);font-weight:600}
 .rail-head b{font-size:11px;color:var(--ink-4);font-weight:600}
 .roster{display:flex;flex-direction:column;gap:5px}
-.ritem{
-  display:grid;grid-template-columns:38px 1fr;gap:11px;align-items:center;
-  padding:11px 11px;border-radius:13px;cursor:pointer;border:1px solid transparent;
-  transition:background .15s,border-color .15s;
-}
+.ritem{display:grid;grid-template-columns:38px 1fr;gap:11px;align-items:center;padding:11px;border-radius:13px;cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s}
 .ritem:hover{background:var(--card)}
 .ritem.on{background:var(--card-2);border-color:var(--line-3)}
-.ritem.on::before{content:"";position:absolute}
-.rav{
-  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
-  font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em;position:relative;
-}
-.rav i{position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--bg-2)}
+.rav{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em;position:relative}
+.rav i{position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--shell)}
 .rmeta{min-width:0}
 .rtop{display:flex;align-items:center;gap:7px}
 .rname{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rtag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px;background:var(--brand-faint);color:var(--brand-ink);letter-spacing:.04em;flex:none}
 .rsub{display:flex;align-items:center;gap:6px;margin-top:3px}
 .rstage{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rbar{height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden}
+.rbar{height:3px;border-radius:2px;background:var(--track);margin-top:8px;overflow:hidden}
 .rbar>i{display:block;height:100%;border-radius:2px}
 
-/* ── MAIN ── */
+/* ══ MAIN ══ */
 .main{min-width:0;padding:24px 30px 72px}
 @media(max-width:1180px){.main{padding:22px 20px 60px}}
-
-/* identity header */
-.idcard{
-  display:flex;gap:20px;align-items:flex-start;padding:22px 24px;border-radius:var(--r-xl);
-  background:linear-gradient(135deg,rgba(64,32,224,.10),rgba(255,255,255,.02) 46%);
-  border:1px solid var(--line);box-shadow:var(--sh);position:relative;overflow:hidden;
-}
-.idcard::after{content:"";position:absolute;right:-40px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(244,98,42,.10),transparent 70%);pointer-events:none}
-.idav{width:62px;height:62px;border-radius:17px;flex:none;display:grid;place-items:center;font-weight:700;font-size:24px;color:#fff;letter-spacing:-.02em;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 6px 20px rgba(0,0,0,.35)}
+.idcard{display:flex;gap:20px;align-items:flex-start;padding:22px 24px;border-radius:var(--r-xl);background:linear-gradient(135deg,var(--brand-faint),transparent 46%);border:1px solid var(--line);box-shadow:var(--sh);position:relative;overflow:hidden}
+.idcard::after{content:"";position:absolute;right:-40px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--orange-faint),transparent 70%);pointer-events:none}
+.idav{width:62px;height:62px;border-radius:17px;flex:none;display:grid;place-items:center;font-weight:700;font-size:24px;color:#fff;letter-spacing:-.02em;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 6px 20px rgba(0,0,0,.28)}
 .idmain{flex:1;min-width:0}
 .idname{font-family:var(--serif);font-size:32px;line-height:1;letter-spacing:.01em;margin-bottom:7px;text-wrap:balance}
-.idmeta{display:flex;flex-wrap:wrap;gap:7px 16px;align-items:center;color:var(--ink-3);font-size:12.5px}
+.idmeta{display:flex;flex-wrap:wrap;gap:7px 15px;align-items:center;color:var(--ink-3);font-size:12.5px}
 .idmeta .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-4)}
 .idmeta b{color:var(--ink-2);font-weight:600}
 .idactions{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
 .idbadges{display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex:none}
-
-/* pills */
-.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
-.pill svg{width:11px;height:11px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
 .pill.good{background:var(--good-faint);color:var(--good)}
 .pill.warn{background:var(--warn-faint);color:var(--warn)}
 .pill.crit{background:var(--crit-faint);color:var(--crit)}
 .pill.info{background:var(--info-faint);color:var(--info)}
 .pill.brand{background:var(--brand-faint);color:var(--brand-ink)}
-.pill.muted{background:rgba(255,255,255,.05);color:var(--ink-3)}
+.pill.muted{background:var(--wash);color:var(--ink-3)}
 .pill.dotp::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 
-/* KPI row */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0 6px}
 @media(max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
 .kpi{padding:15px 16px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line-2);position:relative;overflow:hidden}
-.kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:600;display:flex;align-items:center;gap:6px}
-.kpi .val{font-family:var(--serif);font-size:27px;line-height:1.05;margin-top:9px;letter-spacing:.01em}
+.kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:600}
+.kpi .val{font-family:var(--serif);font-size:27px;line-height:1.05;margin-top:9px}
 .kpi .val.mono{font-family:var(--mono);font-size:21px;font-weight:600}
 .kpi .sub{font-size:11px;color:var(--ink-3);margin-top:4px}
 .kpi .stripe{position:absolute;left:0;top:0;bottom:0;width:3px}
 
-/* journey spine */
 .section-title{display:flex;align-items:center;gap:9px;margin:26px 2px 13px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600}
 .section-title .ln{flex:1;height:1px;background:var(--line-2)}
 .journey-wrap{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);padding:20px 8px 6px;overflow-x:auto}
@@ -178,18 +199,16 @@ button{font-family:inherit}
 .jstep{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:0 3px}
 .jstep .conn{position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--line-3);z-index:0}
 .jstep:first-child .conn{display:none}
-.jstep.done .conn,.jstep.now .conn{background:linear-gradient(90deg,var(--good),var(--good))}
+.jstep.done .conn,.jstep.now .conn{background:var(--good)}
 .jdot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;z-index:1;background:var(--bg-3);border:2px solid var(--line-3);font-size:12px;font-weight:700;color:var(--ink-4);position:relative}
 .jstep.done .jdot{background:var(--good-faint);border-color:var(--good);color:var(--good)}
 .jstep.now .jdot{background:var(--orange);border-color:var(--orange);color:#fff;box-shadow:0 0 0 5px var(--orange-faint)}
 .jstep.now .jdot::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--orange);animation:pulse 2s ease-out infinite}
 @keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.7);opacity:0}}
 .jlab{font-size:10.5px;line-height:1.25;margin-top:9px;color:var(--ink-3);max-width:96px;font-weight:500}
-.jstep.done .jlab{color:var(--ink-2)}
-.jstep.now .jlab{color:var(--ink);font-weight:600}
+.jstep.done .jlab{color:var(--ink-2)} .jstep.now .jlab{color:var(--ink);font-weight:600}
 .jnum{font-size:9px;color:var(--ink-4);margin-top:3px;font-family:var(--mono)}
 
-/* cards grid */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:8px}
 @media(max-width:1080px){.cards{grid-template-columns:1fr}}
 .card{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);overflow:hidden;display:flex;flex-direction:column}
@@ -199,26 +218,18 @@ button{font-family:inherit}
 .chead h3{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
 .chead .r{margin-left:auto;font-size:11px;color:var(--ink-3)}
 .cbody{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
-
-/* generic rows / kv */
 .kv{display:flex;flex-direction:column;gap:9px}
 .kvr{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;align-items:baseline}
-.kvr .k{color:var(--ink-3)}
-.kvr .v{color:var(--ink);font-weight:500;text-align:right}
+.kvr .k{color:var(--ink-3)} .kvr .v{color:var(--ink);font-weight:500;text-align:right}
 .prose{font-size:12.8px;line-height:1.62;color:var(--ink-2)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:11px;padding:4px 9px;border-radius:8px;background:var(--card-2);border:1px solid var(--line-2);color:var(--ink-2)}
-.chip.flag{background:rgba(255,255,255,.04)}
 .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-4);font-weight:600;margin-bottom:2px}
-
-/* code block */
 .codebox{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;background:linear-gradient(135deg,var(--brand-faint),transparent);border:1px solid var(--line-3)}
 .codebox .cv{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--brand-ink)}
 .codebox .cmeta{font-size:10.5px;color:var(--ink-3);line-height:1.4}
 .copybtn{margin-left:auto;background:var(--card-2);border:1px solid var(--line-3);color:var(--ink-2);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
-.copybtn:hover{background:rgba(255,255,255,.1)}
-
-/* tool + doc + pay rows */
+.copybtn:hover{background:var(--wash)}
 .rows{display:flex;flex-direction:column}
 .row{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line-2)}
 .row:first-child{border-top:none}
@@ -227,29 +238,21 @@ button{font-family:inherit}
 .row .nm small{display:block;font-size:10.5px;color:var(--ink-4);font-weight:400;margin-top:1px}
 .row .rt{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
 .row .rt .mono{font-size:11.5px;color:var(--ink-3)}
-
-/* progress bar (deal) */
-.pbar{height:8px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden;position:relative}
+.pbar{height:8px;border-radius:5px;background:var(--track);overflow:hidden}
 .pbar>i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--good),#5EEAD4)}
 .paywrap{display:flex;flex-direction:column;gap:7px}
 .payhead{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
-.payhead b{font-family:var(--mono);font-size:15px;font-weight:700}
-
-/* timeline */
-.tl{display:flex;flex-direction:column;gap:0}
+.tl{display:flex;flex-direction:column}
 .tli{display:grid;grid-template-columns:15px 1fr;gap:11px;padding-bottom:14px;position:relative}
 .tli:last-child{padding-bottom:0}
 .tli .rail-line{position:relative;display:flex;justify-content:center}
 .tli .rail-line::before{content:"";position:absolute;top:4px;bottom:-14px;width:1.5px;background:var(--line-3)}
 .tli:last-child .rail-line::before{display:none}
-.tli .node{width:9px;height:9px;border-radius:50%;background:var(--brand-2);margin-top:3px;z-index:1;box-shadow:0 0 0 3px var(--bg-2)}
+.tli .node{width:9px;height:9px;border-radius:50%;background:var(--brand);margin-top:3px;z-index:1;box-shadow:0 0 0 3px var(--shell)}
 .tli.access .node{background:var(--orange)}
-.tli .tc{min-width:0}
 .tli .td{font-size:10.5px;color:var(--ink-4);font-family:var(--mono);margin-bottom:1px}
 .tli .tn{font-size:12.3px;color:var(--ink-2);line-height:1.45}
 .tli .tch{font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
-
-/* checklist (milestones detail) */
 .checks{display:flex;flex-direction:column}
 .ck{display:grid;grid-template-columns:22px 1fr auto;gap:11px;padding:11px 0;border-top:1px solid var(--line-2);align-items:start}
 .ck:first-child{border-top:none}
@@ -261,477 +264,287 @@ button{font-family:inherit}
 .ck .cn{font-size:11px;color:var(--ink-4);margin-top:2px;line-height:1.4}
 .ck .cd{font-size:10.5px;color:var(--ink-4);font-family:var(--mono);white-space:nowrap}
 .ck.now .ct{color:var(--ink)}
-
-/* next action banner */
-.next{display:flex;gap:13px;align-items:flex-start;padding:14px 16px;border-radius:var(--r);background:var(--orange-faint);border:1px solid rgba(244,98,42,.28)}
-.next .ni{font-size:18px;flex:none;margin-top:-1px}
+.next{display:flex;gap:13px;align-items:flex-start;padding:14px 16px;border-radius:var(--r);background:var(--orange-faint);border:1px solid color-mix(in srgb,var(--orange) 30%,transparent)}
+.next .ni{font-size:18px;flex:none;margin-top:-1px;color:var(--orange)}
 .next .nt{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--orange-2);font-weight:700}
 .next .nb{font-size:13px;color:var(--ink);font-weight:500;margin-top:3px;line-height:1.45}
 .next .nm2{font-size:11px;color:var(--ink-3);margin-top:5px}
-
-/* empty state */
 .empty{padding:20px 16px;text-align:center;border:1px dashed var(--line-3);border-radius:var(--r);color:var(--ink-3);font-size:12.3px;line-height:1.5}
 .empty b{color:var(--ink-2);display:block;margin-bottom:3px;font-weight:600}
-
 .foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line-2);font-size:11px;color:var(--ink-4);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
 .foot .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-4)}
 
-/* mobile */
 .rail-toggle{display:none}
 @media(max-width:900px){
   .app{grid-template-columns:1fr}
-  .rail{position:fixed;inset:61px 0 auto 0;z-index:35;max-height:64vh;border-right:none;border-bottom:1px solid var(--line);transform:translateY(-115%);transition:transform .28s cubic-bezier(.16,1,.3,1)}
+  .rail{position:fixed;inset:60px 0 auto 0;z-index:35;max-height:64vh;border-right:none;border-bottom:1px solid var(--line);transform:translateY(-115%);transition:transform .28s cubic-bezier(.16,1,.3,1)}
   .rail.open{transform:translateY(0)}
   .rail-toggle{display:inline-flex}
   .top-stats{display:none}
-  .idname{font-size:26px}
-  .idcard{flex-direction:column}
+  .idname{font-size:26px} .idcard{flex-direction:column}
   .idbadges{flex-direction:row;flex-wrap:wrap;align-items:center}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
-<div class="app">
-  <!-- TOPBAR -->
+<!-- LOGIN GATE -->
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="gatemark">N</div>
+    <h1>Client Gateway</h1>
+    <div class="sub">Sign in to the CRM. Nothing loads until your token is verified on the server — the console ships blind.</div>
+    <form id="gateForm" autocomplete="off">
+      <div class="field"><label for="gEmail">Consultant email</label><input id="gEmail" type="email" placeholder="you@nomadassetcollective.com" autocomplete="username"></div>
+      <div class="field"><label for="gToken">Access token</label><input id="gToken" type="password" placeholder="••••••••••••" autocomplete="current-password"></div>
+      <button class="gate-btn" id="gateBtn" type="submit">Enter the gateway</button>
+      <div class="gate-err" id="gateErr"></div>
+    </form>
+    <div class="gate-foot">
+      <span id="gateHost">—</span>
+      <a id="demoLink">Preview with demo data →</a>
+    </div>
+    <div class="gate-lock">🔒 Server-verified · no client data stored in this page</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app hide" id="app">
   <header class="topbar">
-    <button class="btn btn-sm rail-toggle" id="railToggle" aria-label="Toggle client list">☰ Clients</button>
-    <div class="brand">
-      <div class="brand-mark">N</div>
-      <div class="brand-txt"><b>Client Gateway</b><span>Consultation → Passport · A–Z</span></div>
-    </div>
-    <div class="top-search">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="search" type="search" placeholder="Search clients, programs, properties…" autocomplete="off">
-    </div>
+    <button class="btn btn-sm rail-toggle" id="railToggle" aria-label="Toggle client list">☰</button>
+    <div class="brand"><div class="brand-mark">N</div><div class="brand-txt"><b>Client Gateway</b><span>Consultation → Passport · A–Z</span></div></div>
+    <div class="top-search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="search" type="search" placeholder="Search clients, programs, properties…" autocomplete="off"></div>
     <div class="top-stats">
       <div class="tstat"><b id="stat-active">—</b><span>In pipeline</span></div>
       <div class="tstat"><b id="stat-value">—</b><span>Portfolio</span></div>
     </div>
-    <button class="btn btn-accent btn-sm" id="newBtn">＋ New client</button>
+    <button class="iconbtn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+    <button class="iconbtn" id="logoutBtn" title="Sign out" aria-label="Sign out">⏻</button>
   </header>
-
-  <!-- RAIL -->
+  <div class="demobar hide" id="demobar"><b>Demo</b><span>Fictional sample data — not real client records. Sign in for the live CRM.</span></div>
   <aside class="rail" id="rail">
     <div class="rail-head"><h2>Clients</h2><b id="roster-count"></b></div>
     <div class="roster" id="roster"></div>
   </aside>
-
-  <!-- MAIN -->
   <main class="main" id="dossier"></main>
 </div>
 
 <script>
-/* ════════════════════════════════════════════════════════════
-   NAC Client Gateway — consultant console
-   Seeded from Notion (Lead CRM · Partners · KYC Intake · First-Call).
-   Thao Ha = live record from the 2026-07-17 consultation.
-   Two clients tagged ⟨Sample⟩ illustrate later A–Z stages.
-   Wire to live data: set window.GW_DATA before this script, or
-   fetch(WORKER_URL + '/api/clients').
-   ════════════════════════════════════════════════════════════ */
+/* ════════ NAC Client Gateway v2 — blind CRM, light/dark ════════
+   Public shell. Real data loads ONLY after the Worker verifies the
+   access token server-side (GET /api/gateway/clients, x-gateway-token).
+   Demo mode renders fictional data for UI review — no real PII here.
+   ════════════════════════════════════════════════════════════════ */
+
+const WORKER_URL = (localStorage.getItem('nac_worker_url') || 'https://nac-dashboard.ray-vtt.workers.dev').replace(/\/$/,'');
+const SESS_KEY = 'nac_gw_session';
 
 const STAGES = [
-  ["Consultation","First NAC meeting"],
-  ["KYC & Questionnaire","Intake + eligibility"],
-  ["Program Shortlist","Narrow the options"],
-  ["Property Selection","Choose + reserve"],
-  ["Source of Funds","DD + compliance"],
-  ["Reservation Deposit","Secure the unit"],
-  ["Agreement & Financing","SPA + bank"],
-  ["Govt Application","File with authority"],
-  ["Approval in Principle","Conditional yes"],
-  ["Completion","Final payment"],
-  ["Residency / Passport","Card issued"],
-  ["Handover & Aftercare","Keys + ongoing"],
+  ["Consultation","First NAC meeting"],["KYC & Questionnaire","Intake + eligibility"],
+  ["Program Shortlist","Narrow the options"],["Property Selection","Choose + reserve"],
+  ["Source of Funds","DD + compliance"],["Reservation Deposit","Secure the unit"],
+  ["Agreement & Financing","SPA + bank"],["Govt Application","File with authority"],
+  ["Approval in Principle","Conditional yes"],["Completion","Final payment"],
+  ["Residency / Passport","Card issued"],["Handover & Aftercare","Keys + ongoing"],
 ];
+const AV = [["#4020E0","#7C4DFF"],["#F4622A","#FF9F1C"],["#0E9F6E","#34D399"],["#2563EB","#60A5FA"],["#DB2777","#F472B6"]];
 
-const AV = [ ["#4020E0","#7C4DFF"], ["#F4622A","#FF9F1C"], ["#0E9F6E","#34D399"], ["#2563EB","#60A5FA"], ["#DB2777","#F472B6"] ];
-
-const CLIENTS = [
-  {
-    id:"thao-ha", name:"Thao Ha", av:0, real:true,
-    email:null, phone:null, location:"Vietnam", advisor:"Ray Vũ", source:"Cold Outreach",
-    status:["Active","good"], appetite:["Warm","warn"],
-    budget:500000, cur:"USD",
-    code:"N2E6-U3XH", codeIssued:"17 Jul 2026", codeOpens:0, lastAccess:"Not yet opened",
-    programs:["🇲🇹 Malta RBI","🇨🇾 Cyprus RBI","🇬🇷 Greece GV"],
-    stage:3, progress:26,
-    notion:"https://app.notion.com/p/3a048ec25e86800eb12ef18d5af2060c",
-    consult:{
-      date:"17 Jul 2026", format:"Video call", dur:"~45 min",
-      outcome:["Proceed — shortlist Malta / Cyprus / Greece","good"],
-      summary:"Her company's leadership team was given a rare window to apply (normally reserved for families & investors); she'll invest through the company. Strong preference for the real-estate route over investment funds — safer for Vietnamese investors — targeting rental yield plus capital appreciation. Shortlisted Malta, Cyprus and Greece for their long, stable track records; parked Portugal (policy risk, 5→10-yr shifts) and Spain (Golden Visa closed Apr 2025).",
-      goals:["Wealth preservation — yield + appreciation","EU residency via a stable, long-standing program","Invest through her company","Barcelona property, separate track (Poblenou €300–400K)"],
-      concerns:["Program stability (a friend's Hungary scheme closed)","Rental income must cover carrying cost"]
-    },
-    property:{ status:["Shortlisting","warn"], locked:null,
-      options:["🇨🇾 Cyprus — Limassol Del Mar (branded, sea-front)","🇲🇹 Malta — branded residence, €375K route","🇬🇷 Greece — island (Mykonos / Santorini)"],
-      note:"Comparison pack + Barcelona (Poblenou) developer intros to follow." },
+/* ── fictional demo data (safe to be public) ── */
+const DEMO = [
+  { id:"demo-1", name:"Client A · Demo", av:0, sample:true, email:null, phone:null, location:"—", advisor:"Consultant", source:"Consultation",
+    status:["Active","good"], appetite:["Warm","warn"], budget:500000, cur:"USD",
+    code:"DEMO-0001", codeIssued:"Day 0", codeOpens:0, lastAccess:"Not yet opened",
+    programs:["🇲🇹 Malta RBI","🇨🇾 Cyprus RBI","🇬🇷 Greece GV"], stage:3, progress:26,
+    consult:{date:"Day 0",format:"Video call",dur:"~45 min",outcome:["Proceed — shortlist 3 programs","good"],
+      summary:"Illustrative early-stage record. Consultation logged, access code issued, brochures shared. Downstream stages (deal, documents, milestones) populate as the client progresses.",
+      goals:["Wealth preservation — yield + appreciation","EU residency via a stable program","Invest through a company"],concerns:["Program stability","Rental income vs carrying cost"]},
+    property:{status:["Shortlisting","warn"],locked:null,options:["🇨🇾 Cyprus — sea-front branded residence","🇲🇹 Malta — €375K route","🇬🇷 Greece — island unit"],note:"Comparison pack to follow."},
     deal:null,
-    tools:[
-      ["🏠","Property Hub","Live listings — yield/IRR/payback",["Granted","brand"],"Code issued today — awaiting first open"],
-      ["📘","Malta Brochure","RBI program brief",["Shared","info"],"Link sent"],
-      ["📗","Cyprus Brochure","RBI program brief",["Shared","info"],"Link sent"],
-      ["🗂️","Brochures Overview","All 16 programs",["Shared","info"],"Link sent"],
-      ["📊","NAC Index — Compare","6-criteria scorecard",["Not sent","muted"],"Queue after shortlist"],
-      ["🧮","ROI Simulator","Yield & payback model",["Not sent","muted"],"—"],
-    ],
-    touch:[
-      ["17 Jul 2026","Consult","First consultation held (video). Malta / Cyprus / Greece shortlist agreed; real-estate route preferred.",0],
-      ["17 Jul 2026","Access","Property Hub code N2E6-U3XH issued; Malta + Cyprus brochures + overview shared.",1],
-    ],
+    tools:[["🏠","Property Hub","Live listings",["Granted","brand"],"Code issued — awaiting first open"],["📘","Malta Brochure","Program brief",["Shared","info"],"Link sent"],["📗","Cyprus Brochure","Program brief",["Shared","info"],"Link sent"],["📊","NAC Index","Compare scorecard",["Not sent","muted"],"—"]],
+    touch:[["Day 0","Consult","First consultation held; 3-program shortlist agreed.",0],["Day 0","Access","Property Hub code issued; brochures shared.",1]],
     docs:[],
-    steps:[
-      ["done","17 Jul 2026","Held via video — logged to CRM."],
-      ["now","—","Send KYC Intake form; capture email / phone (not yet on file)."],
-      ["todo","—","Malta vs Cyprus vs Greece comparison pack."],
-      ["todo","—","Reserve a unit once a country is chosen."],
-      ["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""]
-    ],
-    next:{ body:"Send the Malta vs Cyprus vs Greece comparison and introduce Barcelona developers / Sotheby's (Poblenou, €300–400K). Capture her email + phone first.", due:"Due 24 Jul 2026", owner:"Ray Vũ" }
-  },
-
-  {
-    id:"quan-nguyen", name:"Nguyễn Minh Quân", av:1, sample:true,
-    email:"quan.nguyen@example.com", phone:"+84 90 xxx 1188", location:"Hà Nội, VN", advisor:"Ray Vũ", source:"Residence Index",
-    status:["Active","good"], appetite:["High","good"],
-    budget:400000, cur:"USD",
-    code:"K7PM-4RB9", codeIssued:"12 May 2026", codeOpens:14, lastAccess:"3 days ago",
-    programs:["🇹🇷 Turkey CBI"],
-    stage:7, progress:64,
-    consult:{
-      date:"09 May 2026", format:"In-person · D1 office", dur:"~1 hr",
-      outcome:["Proceed to Turkey CBI real estate","good"],
-      summary:"Business owner seeking a fast second passport for global mobility. Chose Turkey CBI ($400K real-estate route) for speed and the 3-year resale option. Comfortable with the ticket; wants a branded Istanbul unit with rental management in place.",
-      goals:["Second passport for visa-free travel","$400K real-estate route, resale at year 3","Hands-off rental management"],
-      concerns:["Timeline to passport","FX on the lira-denominated purchase"]
-    },
-    property:{ status:["Locked","good"], locked:"Boulevard Sefaköy — Istanbul (2BR, Block C)",
-      options:["🇹🇷 Boulevard Sefaköy — Istanbul CBI ✓"],
-      note:"Reserved 28 May; title valuation confirmed at $412K (above $400K floor)." },
-    deal:{ price:412000, paid:288400, cur:"USD",
-      financing:"70% down · 30% on title transfer", partner:"Sefaköy Yapı (developer) · via NAC",
-      bank:"Kuveyt Türk — escrow + valuation report",
-      schedule:[
-        ["Reservation deposit","done","$41,200"],
-        ["First installment (60%)","done","$247,200"],
-        ["Title transfer balance","now","$123,600"],
-        ["Govt fees + legal","todo","$18,500"],
-      ]},
-    tools:[
-      ["🏠","Property Hub","Live listings",["Active","good"],"Opened 14× · compared 3 Istanbul units"],
-      ["📘","Turkey Brochure","CBI program brief",["Read","good"],"Opened 5×"],
-      ["📊","NAC Index — Compare","Scorecard",["Active","good"],"Turkey vs Grenada vs St Kitts"],
-      ["🧮","ROI Simulator","Yield & payback",["Used","good"],"Modeled 3-yr resale"],
-    ],
-    touch:[
-      ["09 May 2026","Consult","In-person consultation — Turkey CBI selected.",0],
-      ["12 May 2026","Access","Property Hub code K7PM-4RB9 issued.",1],
-      ["28 May 2026","Deal","Boulevard Sefaköy 2BR reserved; deposit paid.",0],
-      ["14 Jun 2026","Docs","Passport scans + source-of-funds letter received.",0],
-      ["02 Jul 2026","Application","CBI application filed with authority.",0],
-    ],
-    docs:[
-      ["Passport (bio page)","Identity",["Verified","good"],"14 Jun 2026"],
-      ["Proof of funds — bank letter","Compliance",["Verified","good"],"14 Jun 2026"],
-      ["Source-of-funds declaration","Compliance",["Verified","good"],"18 Jun 2026"],
-      ["Sales contract (SPA)","Legal",["Signed","good"],"25 Jun 2026"],
-      ["Title deed (TAPU)","Legal",["Pending","warn"],"On transfer"],
-      ["Police clearance","Compliance",["In review","warn"],"Submitted 02 Jul"],
-    ],
-    steps:[
-      ["done","09 May 2026","In-person — Turkey CBI selected."],
-      ["done","14 Jun 2026","Intake + eligibility cleared."],
-      ["done","20 May 2026","Turkey CBI, real-estate route."],
-      ["done","28 May 2026","Boulevard Sefaköy 2BR reserved."],
-      ["done","18 Jun 2026","Source-of-funds verified."],
-      ["done","28 May 2026","$41,200 deposit paid."],
-      ["done","25 Jun 2026","SPA signed · Kuveyt Türk escrow."],
-      ["now","02 Jul 2026","Application filed — awaiting exam."],
-      ["todo","—","Approval in principle expected ~Aug."],
-      ["todo","—","Title transfer balance $123,600."],
-      ["todo","—","Passport issuance."],
-      ["todo","—","Keys + rental management handover."]
-    ],
-    next:{ body:"Chase police-clearance result and confirm title-transfer date with Kuveyt Türk; balance of $123,600 due on transfer.", due:"Due 21 Jul 2026", owner:"Ray Vũ" }
-  },
-
-  {
-    id:"bao-chau", name:"Trần Bảo Châu", av:2, sample:true,
-    email:"chau.tran@example.com", phone:"+84 91 xxx 7742", location:"TP.HCM, VN", advisor:"Ray Vũ", source:"Referral",
-    status:["Completing","info"], appetite:["High","good"],
-    budget:850000, cur:"EUR",
-    code:"H3TX-9QME", codeIssued:"02 Feb 2026", codeOpens:31, lastAccess:"Yesterday",
-    programs:["🇬🇷 Greece Golden Visa"],
-    stage:10, progress:93,
-    consult:{
-      date:"28 Jan 2026", format:"Video call", dur:"~50 min",
-      outcome:["Proceed to Greece GV — Athens","good"],
-      summary:"Family of four relocating for education and EU access. Chose Greece Golden Visa (€800K central-Athens threshold) with a view to long-term hold. Two children to be included as dependents; wants schooling options mapped before completion.",
-      goals:["EU residency for the whole family","Children's education in the EU","Long-term hold, strong rental area"],
-      concerns:["Dependents' documentation","Rental permit rules in central Athens"]
-    },
-    property:{ status:["Completed","good"], locked:"The Newcastle — Central Athens (3BR)",
-      options:["🇬🇷 The Newcastle — Central Athens GV ✓"],
-      note:"Purchase completed 14 Jun; residence-permit application approved in principle." },
-    deal:{ price:820000, paid:820000, cur:"EUR",
-      financing:"Full cash purchase", partner:"Athens Prime Residences · Sotheby's intl.",
-      bank:"Piraeus Bank — completed transfer",
-      schedule:[
-        ["Reservation deposit","done","€82,000"],
-        ["Completion balance","done","€738,000"],
-        ["Transfer tax + legal","done","€29,400"],
-        ["GV application fees","done","€2,000"],
-      ]},
-    tools:[
-      ["🏠","Property Hub","Live listings",["Active","good"],"Opened 31× · saved 4 Athens units"],
-      ["📗","Greece Brochure","GV program brief",["Read","good"],"Opened 8×"],
-      ["📊","NAC Index — Compare","Scorecard",["Used","good"],"Greece vs Portugal vs Malta"],
-      ["🧮","ROI Simulator","Yield & payback",["Used","good"],"Athens rental model"],
-    ],
-    touch:[
-      ["28 Jan 2026","Consult","Video consultation — Greece GV, family of four.",0],
-      ["02 Feb 2026","Access","Property Hub code H3TX-9QME issued.",1],
-      ["11 Mar 2026","Deal","The Newcastle 3BR reserved.",0],
-      ["14 Jun 2026","Completion","Purchase completed — Piraeus transfer cleared.",0],
-      ["08 Jul 2026","Application","GV biometrics submitted — family of four.",0],
-    ],
-    docs:[
-      ["Passports ×4 (family)","Identity",["Verified","good"],"20 Feb 2026"],
-      ["Proof of funds","Compliance",["Verified","good"],"25 Feb 2026"],
-      ["Purchase contract","Legal",["Signed","good"],"11 Mar 2026"],
-      ["Title deed","Legal",["Registered","good"],"14 Jun 2026"],
-      ["Marriage + birth certificates","Dependents",["Verified","good"],"02 Mar 2026"],
-      ["Health insurance (EU)","Compliance",["Verified","good"],"30 Jun 2026"],
-      ["Biometrics receipt","Application",["Filed","good"],"08 Jul 2026"],
-      ["Residence permit","Outcome",["Approved in principle","info"],"Cards ~Aug 2026"],
-    ],
-    steps:[
-      ["done","28 Jan 2026","Video — Greece GV, family of four."],
-      ["done","25 Feb 2026","Intake + dependents cleared."],
-      ["done","20 Feb 2026","Greece GV — central Athens."],
-      ["done","11 Mar 2026","The Newcastle 3BR reserved."],
-      ["done","25 Feb 2026","Source-of-funds verified."],
-      ["done","11 Mar 2026","€82,000 deposit paid."],
-      ["done","11 Mar 2026","Contract signed · Piraeus."],
-      ["done","08 Jul 2026","GV biometrics filed (×4)."],
-      ["done","09 Jul 2026","Approved in principle."],
-      ["now","14 Jun 2026","Purchase completed — all paid."],
-      ["todo","~Aug 2026","Residence cards issuance."],
-      ["todo","—","Handover + school-placement support."]
-    ],
-    next:{ body:"Collect residence-permit cards for all four (expected ~Aug) and begin school-placement aftercare; deal fully paid, files complete.", due:"Due ~Aug 2026", owner:"Ray Vũ" }
-  }
+    steps:[["done","Day 0","Held via video."],["now","—","Send KYC form; capture contact."],["todo","—","Comparison pack."],["todo","—","Reserve a unit."],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""],["todo","—",""]],
+    next:{body:"Send the program comparison and capture email + phone.",due:"Due +7d",owner:"Consultant"} },
+  { id:"demo-2", name:"Client B · Demo", av:1, sample:true, email:"b@example.com", phone:"+00 000 0000", location:"—", advisor:"Consultant", source:"Residence Index",
+    status:["Active","good"], appetite:["High","good"], budget:400000, cur:"USD",
+    code:"DEMO-0002", codeIssued:"Day 0", codeOpens:14, lastAccess:"3 days ago",
+    programs:["🇹🇷 Turkey CBI"], stage:7, progress:64,
+    consult:{date:"—",format:"In-person",dur:"~1 hr",outcome:["Proceed to CBI real estate","good"],
+      summary:"Illustrative mid-pipeline record: property locked, deposit + first installment paid, source-of-funds verified, application filed. Shows the deal, payment schedule, partner, bank and documents cards fully populated.",
+      goals:["Second passport for mobility","Real-estate route, resale at year 3","Hands-off rental management"],concerns:["Timeline to passport","FX exposure"]},
+    property:{status:["Locked","good"],locked:"Sample Residence — Istanbul (2BR)",options:["🇹🇷 Sample Residence — Istanbul ✓"],note:"Reserved; valuation confirmed above the program floor."},
+    deal:{price:412000,paid:288400,cur:"USD",financing:"70% down · 30% on title transfer",partner:"Sample Developer · via NAC",bank:"Sample Bank — escrow + valuation",
+      schedule:[["Reservation deposit","done","$41,200"],["First installment (60%)","done","$247,200"],["Title transfer balance","now","$123,600"],["Govt fees + legal","todo","$18,500"]]},
+    tools:[["🏠","Property Hub","Live listings",["Active","good"],"Opened 14× · compared 3 units"],["📘","Turkey Brochure","Program brief",["Read","good"],"Opened 5×"],["📊","NAC Index","Scorecard",["Active","good"],"Compared 3 programs"],["🧮","ROI Simulator","Yield & payback",["Used","good"],"Modeled 3-yr resale"]],
+    touch:[["Day 0","Consult","In-person consultation — program selected.",0],["Day 3","Access","Access code issued.",1],["Day 19","Deal","Unit reserved; deposit paid.",0],["Day 36","Docs","Passport + source-of-funds received.",0],["Day 54","Application","Application filed with authority.",0]],
+    docs:[["Passport (bio page)","Identity",["Verified","good"],"Day 36"],["Proof of funds","Compliance",["Verified","good"],"Day 36"],["Source-of-funds declaration","Compliance",["Verified","good"],"Day 40"],["Sales contract (SPA)","Legal",["Signed","good"],"Day 47"],["Title deed","Legal",["Pending","warn"],"On transfer"],["Police clearance","Compliance",["In review","warn"],"Submitted"]],
+    steps:[["done","Day 0","Program selected."],["done","Day 36","Intake cleared."],["done","Day 20","Route chosen."],["done","Day 19","Unit reserved."],["done","Day 40","Source-of-funds verified."],["done","Day 19","Deposit paid."],["done","Day 47","SPA signed · escrow."],["now","Day 54","Application filed — awaiting exam."],["todo","—","Approval expected."],["todo","—","Title transfer balance."],["todo","—","Passport issuance."],["todo","—","Keys + management handover."]],
+    next:{body:"Chase police-clearance result; confirm title-transfer date; balance due on transfer.",due:"Due +5d",owner:"Consultant"} },
+  { id:"demo-3", name:"Client C · Demo", av:2, sample:true, email:"c@example.com", phone:"+00 000 0000", location:"—", advisor:"Consultant", source:"Referral",
+    status:["Completing","info"], appetite:["High","good"], budget:850000, cur:"EUR",
+    code:"DEMO-0003", codeIssued:"Day 0", codeOpens:31, lastAccess:"Yesterday",
+    programs:["🇬🇷 Greece Golden Visa"], stage:10, progress:93,
+    consult:{date:"—",format:"Video call",dur:"~50 min",outcome:["Proceed — family of four","good"],
+      summary:"Illustrative near-completion record: purchase completed, all payments cleared, application approved in principle, residence cards pending. Shows a full document vault including dependents' certificates and the approval outcome.",
+      goals:["EU residency for the whole family","Children's education in the EU","Long-term hold"],concerns:["Dependents' documentation","Rental-permit rules"]},
+    property:{status:["Completed","good"],locked:"Sample Residence — Central Athens (3BR)",options:["🇬🇷 Sample Residence — Central Athens ✓"],note:"Completed; residence-permit approved in principle."},
+    deal:{price:820000,paid:820000,cur:"EUR",financing:"Full cash purchase",partner:"Sample Prime Residences",bank:"Sample Bank — completed transfer",
+      schedule:[["Reservation deposit","done","€82,000"],["Completion balance","done","€738,000"],["Transfer tax + legal","done","€29,400"],["Application fees","done","€2,000"]]},
+    tools:[["🏠","Property Hub","Live listings",["Active","good"],"Opened 31× · saved 4 units"],["📗","Greece Brochure","Program brief",["Read","good"],"Opened 8×"],["📊","NAC Index","Scorecard",["Used","good"],"Compared 3 programs"],["🧮","ROI Simulator","Yield & payback",["Used","good"],"Rental model"]],
+    touch:[["Day 0","Consult","Video consultation — family of four.",0],["Day 5","Access","Access code issued.",1],["Day 42","Deal","Unit reserved.",0],["Day 138","Completion","Purchase completed — transfer cleared.",0],["Day 162","Application","Biometrics submitted — family of four.",0]],
+    docs:[["Passports ×4 (family)","Identity",["Verified","good"],"Day 23"],["Proof of funds","Compliance",["Verified","good"],"Day 28"],["Purchase contract","Legal",["Signed","good"],"Day 42"],["Title deed","Legal",["Registered","good"],"Day 138"],["Marriage + birth certificates","Dependents",["Verified","good"],"Day 30"],["Health insurance (EU)","Compliance",["Verified","good"],"Day 130"],["Biometrics receipt","Application",["Filed","good"],"Day 162"],["Residence permit","Outcome",["Approved in principle","info"],"Cards pending"]],
+    steps:[["done","Day 0","Video — family of four."],["done","Day 28","Intake + dependents cleared."],["done","Day 23","Program chosen."],["done","Day 42","Unit reserved."],["done","Day 28","Source-of-funds verified."],["done","Day 42","Deposit paid."],["done","Day 42","Contract signed."],["done","Day 162","Biometrics filed (×4)."],["done","Day 163","Approved in principle."],["now","Day 138","Purchase completed — all paid."],["todo","—","Residence cards issuance."],["todo","—","Handover + aftercare."]],
+    next:{body:"Collect residence cards for all four; begin aftercare. Deal fully paid, files complete.",due:"Due soon",owner:"Consultant"} },
 ];
+
+let CLIENTS = [];
+let ACTIVE = null;
+let DEMO_MODE = false;
 
 /* ── helpers ── */
 const $ = s => document.querySelector(s);
 const money = (n,cur) => n==null ? "—" : new Intl.NumberFormat("en-US",{style:"currency",currency:cur||"USD",maximumFractionDigits:0}).format(n);
-const initials = n => n.trim().split(/\s+/).slice(-2).map(w=>w[0]).join("").toUpperCase();
+const initials = n => (n||"?").trim().split(/\s+/).slice(-2).map(w=>w[0]).join("").toUpperCase();
 const grad = i => `linear-gradient(145deg,${AV[i%AV.length][1]},${AV[i%AV.length][0]})`;
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const pill = (txt,tone,extra="") => `<span class="pill ${tone} ${extra}">${esc(txt)}</span>`;
+const pill = (t,tone,extra="") => `<span class="pill ${tone} ${extra}">${esc(t)}</span>`;
 const stageName = i => STAGES[i] ? STAGES[i][0] : "—";
-const dotColor = tone => ({good:"var(--good)",warn:"var(--warn)",crit:"var(--crit)",info:"var(--info)",brand:"var(--brand-2)"}[tone]||"var(--ink-3)");
+const dotColor = tone => ({good:"var(--good)",warn:"var(--warn)",crit:"var(--crit)",info:"var(--info)",brand:"var(--brand)"}[tone]||"var(--ink-3)");
 
-let ACTIVE = CLIENTS[0].id;
+/* ── THEME ── */
+function applyTheme(t){
+  if(t==='system'){document.documentElement.removeAttribute('data-theme');}
+  else{document.documentElement.setAttribute('data-theme',t);}
+  localStorage.setItem('nac_gw_theme',t);
+  const dark = t==='dark' || (t!=='light' && matchMedia('(prefers-color-scheme:dark)').matches);
+  const tb=$('#themeBtn'); if(tb) tb.textContent = dark ? '☀' : '☾';
+  const mt=document.querySelector('meta[name=theme-color]'); if(mt) mt.content = dark?'#060608':'#F4F1EB';
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')
+    || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  applyTheme(cur==='dark'?'light':'dark');
+}
+applyTheme(localStorage.getItem('nac_gw_theme')||'system');
 
-/* ── roster ── */
+/* ── AUTH ── */
+function showApp(){ $('#gate').classList.add('hide'); $('#app').classList.remove('hide'); }
+function showGate(msg){ $('#app').classList.add('hide'); $('#gate').classList.remove('hide'); if(msg) $('#gateErr').textContent=msg; }
+
+async function attemptLogin(email, token){
+  const btn=$('#gateBtn'); btn.disabled=true; btn.textContent='Verifying…'; $('#gateErr').textContent='';
+  try{
+    const r = await fetch(`${WORKER_URL}/api/gateway/clients`,{ headers:{ 'x-gateway-token':token, 'x-gateway-email':email } });
+    if(r.status===401){ showGate(''); $('#gateErr').textContent='Email or token not recognised.'; return; }
+    if(!r.ok){ const e=await r.json().catch(()=>({})); $('#gateErr').textContent = e.error || `Server error (${r.status}).`; return; }
+    const data = await r.json();
+    if(!data.clients){ $('#gateErr').textContent = data.error || 'No client data returned.'; return; }
+    localStorage.setItem(SESS_KEY, JSON.stringify({email,token}));
+    DEMO_MODE=false; boot(data.clients);
+  }catch(err){
+    $('#gateErr').textContent='Cannot reach the gateway server. Check your connection, or use demo preview.';
+  }finally{ btn.disabled=false; btn.textContent='Enter the gateway'; }
+}
+
+function enterDemo(){ DEMO_MODE=true; boot(JSON.parse(JSON.stringify(DEMO))); }
+
+function logout(){ localStorage.removeItem(SESS_KEY); CLIENTS=[]; showGate(''); const t=$('#gToken'); if(t) t.value=''; }
+
+function boot(clients){
+  CLIENTS = clients||[]; ACTIVE = CLIENTS[0]?.id || null;
+  $('#demobar').classList.toggle('hide', !DEMO_MODE);
+  showApp(); renderRoster(); renderDossier(); topStats();
+}
+
+/* ── ROSTER ── */
 function renderRoster(filter=""){
-  const f = filter.trim().toLowerCase();
-  const list = CLIENTS.filter(c=>{
-    if(!f) return true;
-    return (c.name+" "+c.programs.join(" ")+" "+(c.property?.locked||"")+" "+c.programs.join("")).toLowerCase().includes(f);
-  });
-  $("#roster-count").textContent = list.length + (f?` / ${CLIENTS.length}`:"");
-  $("#roster").innerHTML = list.map(c=>{
-    const barCol = c.progress>=90?"var(--good)":c.progress>=45?"linear-gradient(90deg,var(--orange),var(--orange-2))":"linear-gradient(90deg,var(--brand-2),var(--brand-ink))";
-    return `<div class="ritem ${c.id===ACTIVE?'on':''}" data-id="${c.id}" role="button" tabindex="0">
-      <div class="rav" style="background:${grad(c.av)}">${initials(c.name)}<i style="background:${dotColor(c.status[1])}"></i></div>
-      <div class="rmeta">
-        <div class="rtop"><span class="rname">${esc(c.name)}</span>${c.sample?`<span class="rtag">SAMPLE</span>`:``}</div>
-        <div class="rsub"><span class="rstage">§${c.stage+1} · ${esc(stageName(c.stage))}</span></div>
-        <div class="rbar"><i style="width:${c.progress}%;background:${barCol}"></i></div>
-      </div>
-    </div>`;
-  }).join("") || `<div class="empty" style="margin:8px">No match. <b></b>Try a program or property name.</div>`;
-  document.querySelectorAll(".ritem").forEach(el=>{
-    el.addEventListener("click",()=>select(el.dataset.id));
-    el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(el.dataset.id);}});
+  const f=filter.trim().toLowerCase();
+  const list=CLIENTS.filter(c=> !f || (c.name+" "+(c.programs||[]).join(" ")+" "+(c.property?.locked||"")).toLowerCase().includes(f));
+  $('#roster-count').textContent = list.length + (f?` / ${CLIENTS.length}`:"");
+  $('#roster').innerHTML = list.map(c=>{
+    const bar = c.progress>=90?"var(--good)":c.progress>=45?"linear-gradient(90deg,var(--orange),var(--orange-2))":"linear-gradient(90deg,var(--brand),var(--brand-ink))";
+    return `<div class="ritem ${c.id===ACTIVE?'on':''}" data-id="${esc(c.id)}" role="button" tabindex="0">
+      <div class="rav" style="background:${grad(c.av||0)}">${initials(c.name)}<i style="background:${dotColor(c.status?.[1])}"></i></div>
+      <div class="rmeta"><div class="rtop"><span class="rname">${esc(c.name)}</span>${c.sample?`<span class="rtag">SAMPLE</span>`:``}</div>
+      <div class="rsub"><span class="rstage">§${(c.stage||0)+1} · ${esc(stageName(c.stage||0))}</span></div>
+      <div class="rbar"><i style="width:${c.progress||0}%;background:${bar}"></i></div></div></div>`;
+  }).join("") || `<div class="empty" style="margin:8px">No match.</div>`;
+  document.querySelectorAll('.ritem').forEach(el=>{
+    el.addEventListener('click',()=>select(el.dataset.id));
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(el.dataset.id);}});
   });
 }
+function select(id){ ACTIVE=id; renderRoster($('#search').value); renderDossier(); $('#rail').classList.remove('open'); window.scrollTo({top:0,behavior:'smooth'}); }
 
-function select(id){
-  ACTIVE=id; renderRoster($("#search").value); renderDossier();
-  $("#rail").classList.remove("open");
-  $("#dossier").scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-/* ── dossier ── */
+/* ── DOSSIER ── */
 function renderDossier(){
-  const c = CLIENTS.find(x=>x.id===ACTIVE); if(!c) return;
-  const contactBits = [
+  const c=CLIENTS.find(x=>x.id===ACTIVE); if(!c){ $('#dossier').innerHTML=`<div class="empty" style="margin-top:40px"><b>No client selected</b>Pick a client from the list.</div>`; return; }
+  const contact=[
     c.email?`<b>${esc(c.email)}</b>`:`<span style="color:var(--crit)">✎ no email on file</span>`,
     c.phone?`<b>${esc(c.phone)}</b>`:`<span style="color:var(--crit)">✎ no phone</span>`,
-    esc(c.location)
+    esc(c.location||"—")
   ].join('<span class="dot"></span>');
-
-  const journey = STAGES.map((s,i)=>{
-    const st = i<c.stage?"done":i===c.stage?"now":"todo";
-    const mark = st==="done"?"✓":(i+1);
-    return `<div class="jstep ${st}"><div class="conn"></div><div class="jdot">${mark}</div><div class="jlab">${esc(s[0])}</div><div class="jnum">§${i+1}</div></div>`;
-  }).join("");
-
-  $("#dossier").innerHTML = `
+  const journey=STAGES.map((s,i)=>{const st=i<c.stage?"done":i===c.stage?"now":"todo";return `<div class="jstep ${st}"><div class="conn"></div><div class="jdot">${st==='done'?'✓':(i+1)}</div><div class="jlab">${esc(s[0])}</div><div class="jnum">§${i+1}</div></div>`;}).join("");
+  $('#dossier').innerHTML=`
   <div class="idcard">
-    <div class="idav" style="background:${grad(c.av)}">${initials(c.name)}</div>
+    <div class="idav" style="background:${grad(c.av||0)}">${initials(c.name)}</div>
     <div class="idmain">
       <div class="idname">${esc(c.name)}</div>
-      <div class="idmeta">${contactBits}<span class="dot"></span>Advisor <b>${esc(c.advisor)}</b><span class="dot"></span>Source <b>${esc(c.source)}</b></div>
+      <div class="idmeta">${contact}<span class="dot"></span>Advisor <b>${esc(c.advisor||'—')}</b><span class="dot"></span>Source <b>${esc(c.source||'—')}</b></div>
       <div class="idactions">
         ${c.email?`<a class="btn btn-sm" href="mailto:${esc(c.email)}">✉️ Email</a>`:`<button class="btn btn-sm" disabled>✉️ Email</button>`}
-        ${c.phone?`<a class="btn btn-sm" href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" rel="noopener">💬 WhatsApp</a>`:`<button class="btn btn-sm" disabled>💬 WhatsApp</button>`}
+        ${c.phone?`<a class="btn btn-sm" href="https://wa.me/${(c.phone||'').replace(/[^0-9]/g,'')}" target="_blank" rel="noopener">💬 WhatsApp</a>`:`<button class="btn btn-sm" disabled>💬 WhatsApp</button>`}
         <a class="btn btn-sm" href="https://calendar.app.google/owGkBM8Q5owKYwDd9" target="_blank" rel="noopener">📅 Book call</a>
         ${c.notion?`<a class="btn btn-sm" href="${esc(c.notion)}" target="_blank" rel="noopener">↗ Notion</a>`:``}
       </div>
     </div>
-    <div class="idbadges">
-      ${pill(c.status[0],c.status[1],"dotp")}
-      ${pill("Appetite · "+c.appetite[0],c.appetite[1])}
-      ${c.real?pill("Live record","brand"):pill("Sample data","muted")}
-    </div>
+    <div class="idbadges">${pill(c.status?.[0]||'—',c.status?.[1]||'muted','dotp')}${pill('Appetite · '+(c.appetite?.[0]||'TBD'),c.appetite?.[1]||'muted')}${c.real?pill('Live record','brand'):pill('Sample data','muted')}</div>
   </div>
-
   <div class="kpis">
-    <div class="kpi"><div class="stripe" style="background:var(--orange)"></div><div class="lab">Current stage</div><div class="val" style="font-size:20px">§${c.stage+1} ${esc(stageName(c.stage))}</div><div class="sub">${esc(STAGES[c.stage][1])}</div></div>
-    <div class="kpi"><div class="stripe" style="background:var(--good)"></div><div class="lab">Progress</div><div class="val">${c.progress}<span style="font-size:16px;color:var(--ink-3)">%</span></div><div class="sub">${c.stage} of ${STAGES.length} stages done</div></div>
-    <div class="kpi"><div class="stripe" style="background:var(--brand-2)"></div><div class="lab">${c.deal?'Deal value':'Budget'}</div><div class="val mono">${money(c.deal?c.deal.price:c.budget,c.deal?c.deal.cur:c.cur)}</div><div class="sub">${c.deal?money(c.deal.paid,c.deal.cur)+' paid':'Target ticket'}</div></div>
-    <div class="kpi"><div class="stripe" style="background:var(--warn)"></div><div class="lab">Next action</div><div class="val" style="font-size:15px;font-family:var(--sans);font-weight:600;line-height:1.3">${esc(c.next.due)}</div><div class="sub">${esc(c.next.owner)}</div></div>
+    <div class="kpi"><div class="stripe" style="background:var(--orange)"></div><div class="lab">Current stage</div><div class="val" style="font-size:20px">§${(c.stage||0)+1} ${esc(stageName(c.stage||0))}</div><div class="sub">${esc(STAGES[c.stage||0][1])}</div></div>
+    <div class="kpi"><div class="stripe" style="background:var(--good)"></div><div class="lab">Progress</div><div class="val">${c.progress||0}<span style="font-size:16px;color:var(--ink-3)">%</span></div><div class="sub">${c.stage||0} of ${STAGES.length} stages done</div></div>
+    <div class="kpi"><div class="stripe" style="background:var(--brand)"></div><div class="lab">${c.deal?'Deal value':'Budget'}</div><div class="val mono">${money(c.deal?c.deal.price:c.budget,c.deal?c.deal.cur:c.cur)}</div><div class="sub">${c.deal?money(c.deal.paid,c.deal.cur)+' paid':'Target ticket'}</div></div>
+    <div class="kpi"><div class="stripe" style="background:var(--warn)"></div><div class="lab">Next action</div><div class="val" style="font-size:15px;font-family:var(--sans);font-weight:600;line-height:1.3">${esc(c.next?.due||'—')}</div><div class="sub">${esc(c.next?.owner||'')}</div></div>
   </div>
-
-  <div class="section-title">The A–Z journey<span class="ln"></span><span style="text-transform:none;letter-spacing:0;color:var(--ink-4)">${c.progress}% complete</span></div>
+  <div class="section-title">The A–Z journey<span class="ln"></span><span style="text-transform:none;letter-spacing:0;color:var(--ink-4)">${c.progress||0}% complete</span></div>
   <div class="journey-wrap"><div class="journey">${journey}</div></div>
-
-  <div class="cards">
-    ${cardConsult(c)}
-    ${cardProperty(c)}
-    ${cardDeal(c)}
-    ${cardTools(c)}
-    ${cardDocs(c)}
-    ${cardMilestones(c)}
-  </div>
-
-  <div class="foot">
-    <span>NAC Client Gateway</span><span class="dot"></span>
-    <span>${c.real?'Live from Notion · Lead CRM + Partners':'Sample record for layout review'}</span><span class="dot"></span>
-    <span>Consultant console · internal</span>
-  </div>`;
+  <div class="cards">${cardConsult(c)}${cardProperty(c)}${cardDeal(c)}${cardTools(c)}${cardDocs(c)}${cardMilestones(c)}</div>
+  <div class="foot"><span>NAC Client Gateway</span><span class="dot"></span><span>${DEMO_MODE?'Demo preview · fictional data':(c.real?'Live from Notion · Lead CRM + Partners':'Record')}</span><span class="dot"></span><span>Consultant console · internal</span></div>`;
 }
-
-/* ── cards ── */
-function cardConsult(c){
-  return `<div class="card wide"><div class="chead"><div class="ic">📞</div><h3>Initial consultation</h3><span class="r">${esc(c.consult.date)} · ${esc(c.consult.format)} · ${esc(c.consult.dur)}</span></div>
-    <div class="cbody">
-      <div>${pill("Outcome · "+c.consult.outcome[0],c.consult.outcome[1])}</div>
-      <p class="prose">${esc(c.consult.summary)}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="cc-2">
-        <div><div class="lbl">Goals</div><div class="chips">${c.consult.goals.map(g=>`<span class="chip">${esc(g)}</span>`).join("")}</div></div>
-        <div><div class="lbl">Concerns</div><div class="chips">${c.consult.concerns.map(g=>`<span class="chip" style="border-color:rgba(248,113,113,.25)">${esc(g)}</span>`).join("")}</div></div>
-      </div>
-    </div></div>`;
-}
-function cardProperty(c){
-  const p=c.property;
-  return `<div class="card"><div class="chead"><div class="ic">🎯</div><h3>Programs & property</h3><span class="r">${pill(p.status[0],p.status[1])}</span></div>
-    <div class="cbody">
-      <div><div class="lbl">Programs in play</div><div class="chips">${c.programs.map(pr=>`<span class="chip flag">${esc(pr)}</span>`).join("")}</div></div>
-      <div><div class="lbl">${p.locked?'Locked property':'Shortlist'}</div>
-        ${p.locked?`<div class="chip" style="background:var(--good-faint);border-color:rgba(52,211,153,.3);color:var(--good);font-weight:600;font-size:12px">🔒 ${esc(p.locked)}</div>`
-          :`<div class="chips" style="flex-direction:column;align-items:stretch">${p.options.map(o=>`<span class="chip" style="text-align:left">${esc(o)}</span>`).join("")}</div>`}
-      </div>
-      ${p.note?`<p class="prose" style="font-size:12px;color:var(--ink-3)">${esc(p.note)}</p>`:``}
-    </div></div>`;
-}
-function cardDeal(c){
-  if(!c.deal){
-    return `<div class="card"><div class="chead"><div class="ic">💳</div><h3>Deal · payment · financing</h3><span class="r">${pill("Not started","muted")}</span></div>
-      <div class="cbody"><div class="empty"><b>Opens at property lock</b>Payment schedule, financing, partner and bank appear once a unit is reserved (stage §6).</div></div></div>`;
-  }
-  const d=c.deal, pct=Math.round(d.paid/d.price*100);
-  return `<div class="card"><div class="chead"><div class="ic">💳</div><h3>Deal · payment · financing</h3><span class="r">${pill(pct>=100?"Fully paid":"In progress",pct>=100?"good":"warn")}</span></div>
-    <div class="cbody">
-      <div class="paywrap">
-        <div class="payhead"><span style="color:var(--ink-3)">Paid <b style="color:var(--good)">${money(d.paid,d.cur)}</b> of ${money(d.price,d.cur)}</span><span class="mono" style="color:var(--ink-3)">${pct}%</span></div>
-        <div class="pbar"><i style="width:${pct}%"></i></div>
-      </div>
-      <div class="kv">
-        <div class="kvr"><span class="k">Financing</span><span class="v">${esc(d.financing)}</span></div>
-        <div class="kvr"><span class="k">Partner</span><span class="v">${esc(d.partner)}</span></div>
-        <div class="kvr"><span class="k">Bank / escrow</span><span class="v">${esc(d.bank)}</span></div>
-      </div>
-      <div><div class="lbl">Payment schedule</div><div class="rows">
-        ${d.schedule.map(s=>`<div class="row"><span class="ico">${s[1]==='done'?'✅':s[1]==='now'?'🟠':'⚪'}</span><span class="nm">${esc(s[0])}</span><span class="rt"><span class="mono">${esc(s[2])}</span>${pill(s[1]==='done'?'Paid':s[1]==='now'?'Due':'Upcoming',s[1]==='done'?'good':s[1]==='now'?'warn':'muted')}</span></div>`).join("")}
-      </div></div>
-    </div></div>`;
-}
-function cardTools(c){
-  return `<div class="card"><div class="chead"><div class="ic">🧰</div><h3>Tools & engagement</h3><span class="r">Code ${esc(c.code)}</span></div>
-    <div class="cbody">
-      <div class="codebox">
-        <div><div class="cv" id="codeval">${esc(c.code)}</div><div class="cmeta">Issued ${esc(c.codeIssued)} · ${c.codeOpens} opens · last: ${esc(c.lastAccess)}</div></div>
-        <button class="copybtn" id="copyCode" data-code="${esc(c.code)}">⧉ Copy</button>
-      </div>
-      <div><div class="lbl">Tool access & usage</div><div class="rows">
-        ${c.tools.map(t=>`<div class="row"><span class="ico">${t[0]}</span><span class="nm">${esc(t[1])}<small>${esc(t[4])}</small></span><span class="rt">${pill(t[3][0],t[3][1])}</span></div>`).join("")}
-      </div></div>
-      <div><div class="lbl">Touchpoints</div><div class="tl">
-        ${c.touch.map(t=>`<div class="tli ${t[3]?'access':''}"><div class="rail-line"><div class="node"></div></div><div class="tc"><div class="td">${esc(t[0])} · <span class="tch">${esc(t[1])}</span></div><div class="tn">${esc(t[2])}</div></div></div>`).join("")}
-      </div></div>
-    </div></div>`;
-}
-function cardDocs(c){
-  const body = c.docs.length
-    ? `<div class="rows">${c.docs.map(d=>`<div class="row"><span class="ico">${docIcon(d[1])}</span><span class="nm">${esc(d[0])}<small>${esc(d[1])}</small></span><span class="rt"><span class="mono">${esc(d[3])}</span>${pill(d[2][0],d[2][1])}</span></div>`).join("")}</div>`
-    : `<div class="empty"><b>No documents yet</b>KYC intake, passport, proof of funds and certificates land here as the client submits them.</div>`;
-  const verified = c.docs.filter(d=>['good'].includes(d[2][1])).length;
-  return `<div class="card"><div class="chead"><div class="ic">📎</div><h3>Documents & submissions</h3><span class="r">${c.docs.length?`${verified}/${c.docs.length} cleared`:'0'}</span></div>
-    <div class="cbody">${body}</div></div>`;
-}
+function cardConsult(c){const k=c.consult||{};return `<div class="card wide"><div class="chead"><div class="ic">📞</div><h3>Initial consultation</h3><span class="r">${esc(k.date||'—')} · ${esc(k.format||'—')}${k.dur?' · '+esc(k.dur):''}</span></div><div class="cbody">${k.outcome?`<div>${pill('Outcome · '+k.outcome[0],k.outcome[1])}</div>`:''}<p class="prose">${esc(k.summary||'No consultation summary yet.')}</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">${k.goals?.length?`<div><div class="lbl">Goals</div><div class="chips">${k.goals.map(g=>`<span class="chip">${esc(g)}</span>`).join("")}</div></div>`:''}${k.concerns?.length?`<div><div class="lbl">Concerns</div><div class="chips">${k.concerns.map(g=>`<span class="chip" style="border-color:var(--crit-faint)">${esc(g)}</span>`).join("")}</div></div>`:''}</div></div></div>`;}
+function cardProperty(c){const p=c.property||{status:['—','muted'],options:[]};return `<div class="card"><div class="chead"><div class="ic">🎯</div><h3>Programs & property</h3><span class="r">${pill(p.status?.[0]||'—',p.status?.[1]||'muted')}</span></div><div class="cbody"><div><div class="lbl">Programs in play</div><div class="chips">${(c.programs||[]).map(pr=>`<span class="chip">${esc(pr)}</span>`).join("")||'<span class="chip">—</span>'}</div></div><div><div class="lbl">${p.locked?'Locked property':'Shortlist'}</div>${p.locked?`<div class="chip" style="background:var(--good-faint);border-color:var(--good-faint);color:var(--good);font-weight:600;font-size:12px">🔒 ${esc(p.locked)}</div>`:`<div class="chips" style="flex-direction:column;align-items:stretch">${(p.options||[]).map(o=>`<span class="chip" style="text-align:left">${esc(o)}</span>`).join("")||'<span class="chip">To be shortlisted</span>'}</div>`}</div>${p.note?`<p class="prose" style="font-size:12px;color:var(--ink-3)">${esc(p.note)}</p>`:''}</div></div>`;}
+function cardDeal(c){if(!c.deal){return `<div class="card"><div class="chead"><div class="ic">💳</div><h3>Deal · payment · financing</h3><span class="r">${pill('Not started','muted')}</span></div><div class="cbody"><div class="empty"><b>Opens at property lock</b>Payment schedule, financing, partner and bank appear once a unit is reserved (stage §6).</div></div></div>`;}const d=c.deal,pct=Math.round(d.paid/d.price*100);return `<div class="card"><div class="chead"><div class="ic">💳</div><h3>Deal · payment · financing</h3><span class="r">${pill(pct>=100?'Fully paid':'In progress',pct>=100?'good':'warn')}</span></div><div class="cbody"><div class="paywrap"><div class="payhead"><span style="color:var(--ink-3)">Paid <b style="color:var(--good)">${money(d.paid,d.cur)}</b> of ${money(d.price,d.cur)}</span><span class="mono" style="color:var(--ink-3)">${pct}%</span></div><div class="pbar"><i style="width:${pct}%"></i></div></div><div class="kv"><div class="kvr"><span class="k">Financing</span><span class="v">${esc(d.financing)}</span></div><div class="kvr"><span class="k">Partner</span><span class="v">${esc(d.partner)}</span></div><div class="kvr"><span class="k">Bank / escrow</span><span class="v">${esc(d.bank)}</span></div></div><div><div class="lbl">Payment schedule</div><div class="rows">${d.schedule.map(s=>`<div class="row"><span class="ico">${s[1]==='done'?'✅':s[1]==='now'?'🟠':'⚪'}</span><span class="nm">${esc(s[0])}</span><span class="rt"><span class="mono">${esc(s[2])}</span>${pill(s[1]==='done'?'Paid':s[1]==='now'?'Due':'Upcoming',s[1]==='done'?'good':s[1]==='now'?'warn':'muted')}</span></div>`).join("")}</div></div></div></div>`;}
+function cardTools(c){return `<div class="card"><div class="chead"><div class="ic">🧰</div><h3>Tools & engagement</h3><span class="r">Code ${esc(c.code||'—')}</span></div><div class="cbody"><div class="codebox"><div><div class="cv">${esc(c.code||'— not issued —')}</div><div class="cmeta">Issued ${esc(c.codeIssued||'—')} · ${c.codeOpens||0} opens · last: ${esc(c.lastAccess||'—')}</div></div>${c.code?`<button class="copybtn" data-copy="${esc(c.code)}">⧉ Copy</button>`:''}</div><div><div class="lbl">Tool access & usage</div><div class="rows">${(c.tools||[]).map(t=>`<div class="row"><span class="ico">${t[0]}</span><span class="nm">${esc(t[1])}<small>${esc(t[4])}</small></span><span class="rt">${pill(t[3][0],t[3][1])}</span></div>`).join("")||'<div class="empty">No tools granted yet.</div>'}</div></div><div><div class="lbl">Touchpoints</div><div class="tl">${(c.touch||[]).map(t=>`<div class="tli ${t[3]?'access':''}"><div class="rail-line"><div class="node"></div></div><div class="tc"><div class="td">${esc(t[0])} · <span class="tch">${esc(t[1])}</span></div><div class="tn">${esc(t[2])}</div></div></div>`).join("")||'<div class="empty">No touchpoints logged.</div>'}</div></div></div></div>`;}
 function docIcon(t){return {Identity:"🪪",Compliance:"🛡️",Legal:"📜",Dependents:"👪",Application:"🗳️",Outcome:"🎖️"}[t]||"📄";}
-function cardMilestones(c){
-  return `<div class="card wide"><div class="chead"><div class="ic">✅</div><h3>Milestones & next action</h3><span class="r">${c.stage}/${STAGES.length} complete</span></div>
-    <div class="cbody">
-      <div class="next"><div class="ni">➜</div><div><div class="nt">Next action · ${esc(c.next.due)}</div><div class="nb">${esc(c.next.body)}</div><div class="nm2">Owner: ${esc(c.next.owner)}</div></div></div>
-      <div class="checks">
-        ${STAGES.map((s,i)=>{const st=c.steps[i]?c.steps[i][0]:'todo';const dt=c.steps[i]?c.steps[i][1]:'—';const nt=c.steps[i]?c.steps[i][2]:'';
-          return `<div class="ck ${st}"><div class="ckbox">${st==='done'?'✓':st==='now'?'●':''}</div><div><div class="ct">§${i+1} · ${esc(s[0])}</div>${nt?`<div class="cn">${esc(nt)}</div>`:``}</div><div class="cd">${esc(dt)}</div></div>`;
-        }).join("")}
-      </div>
-    </div></div>`;
-}
+function cardDocs(c){const docs=c.docs||[];const body=docs.length?`<div class="rows">${docs.map(d=>`<div class="row"><span class="ico">${docIcon(d[1])}</span><span class="nm">${esc(d[0])}<small>${esc(d[1])}</small></span><span class="rt"><span class="mono">${esc(d[3])}</span>${pill(d[2][0],d[2][1])}</span></div>`).join("")}</div>`:`<div class="empty"><b>No documents yet</b>KYC intake, passport, proof of funds and certificates land here as the client submits them.</div>`;const ok=docs.filter(d=>d[2][1]==='good').length;return `<div class="card"><div class="chead"><div class="ic">📎</div><h3>Documents & submissions</h3><span class="r">${docs.length?`${ok}/${docs.length} cleared`:'0'}</span></div><div class="cbody">${body}</div></div>`;}
+function cardMilestones(c){const steps=c.steps||[];return `<div class="card wide"><div class="chead"><div class="ic">✅</div><h3>Milestones & next action</h3><span class="r">${c.stage||0}/${STAGES.length} complete</span></div><div class="cbody">${c.next?`<div class="next"><div class="ni">➜</div><div><div class="nt">Next action · ${esc(c.next.due||'')}</div><div class="nb">${esc(c.next.body||'')}</div>${c.next.owner?`<div class="nm2">Owner: ${esc(c.next.owner)}</div>`:''}</div></div>`:''}<div class="checks">${STAGES.map((s,i)=>{const st=steps[i]?.[0]||'todo',dt=steps[i]?.[1]||'—',nt=steps[i]?.[2]||'';return `<div class="ck ${st}"><div class="ckbox">${st==='done'?'✓':st==='now'?'●':''}</div><div><div class="ct">§${i+1} · ${esc(s[0])}</div>${nt?`<div class="cn">${esc(nt)}</div>`:''}</div><div class="cd">${esc(dt)}</div></div>`;}).join("")}</div></div></div>`;}
 
-/* ── top stats ── */
 function topStats(){
-  const inPipe = CLIENTS.filter(c=>c.stage<11).length;
-  const val = CLIENTS.reduce((s,c)=>s+(c.deal?c.deal.price* (c.cur==='EUR'?1.08:1):(c.budget||0)),0);
-  $("#stat-active").textContent = inPipe;
-  $("#stat-value").textContent = "$"+(val/1000).toFixed(0)+"K";
+  const inPipe=CLIENTS.filter(c=>(c.stage||0)<11).length;
+  const val=CLIENTS.reduce((s,c)=>s+(c.deal?c.deal.price*(c.deal.cur==='EUR'?1.08:1):(c.budget||0)),0);
+  $('#stat-active').textContent=inPipe;
+  $('#stat-value').textContent='$'+(val/1000).toFixed(0)+'K';
 }
 
-/* ── events ── */
-document.addEventListener("click",e=>{
-  const cp=e.target.closest("#copyCode");
-  if(cp){const code=cp.dataset.code;navigator.clipboard?.writeText(code);const o=cp.textContent;cp.textContent="✓ Copied";setTimeout(()=>cp.textContent=o,1400);}
+/* ── EVENTS ── */
+document.addEventListener('click',e=>{
+  const cp=e.target.closest('[data-copy]');
+  if(cp){navigator.clipboard?.writeText(cp.dataset.copy);const o=cp.textContent;cp.textContent='✓ Copied';setTimeout(()=>cp.textContent=o,1400);}
 });
-$("#search").addEventListener("input",e=>renderRoster(e.target.value));
-$("#railToggle").addEventListener("click",()=>$("#rail").classList.toggle("open"));
-$("#newBtn").addEventListener("click",()=>{
-  alert("New-client intake opens the KYC form and creates a Lead CRM row.\n\n(Wired to the Notion Lead CRM + Partners DBs when connected to the Worker.)");
-});
+$('#gateForm').addEventListener('submit',e=>{e.preventDefault();const em=$('#gEmail').value.trim(),tk=$('#gToken').value.trim();if(!em||!tk){$('#gateErr').textContent='Enter both your email and token.';return;}attemptLogin(em,tk);});
+$('#demoLink').addEventListener('click',enterDemo);
+$('#themeBtn').addEventListener('click',toggleTheme);
+$('#logoutBtn').addEventListener('click',logout);
+$('#search').addEventListener('input',e=>renderRoster(e.target.value));
+$('#railToggle').addEventListener('click',()=>$('#rail').classList.toggle('open'));
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{const p=localStorage.getItem('nac_gw_theme');if(!p||p==='system')applyTheme('system');});
 
-/* ── boot ── */
-if(window.GW_DATA&&Array.isArray(window.GW_DATA)){CLIENTS.length=0;window.GW_DATA.forEach(x=>CLIENTS.push(x));ACTIVE=CLIENTS[0]?.id;}
-renderRoster(); renderDossier(); topStats();
+/* ── BOOT ── */
+try{ $('#gateHost').textContent = new URL(WORKER_URL).host; }catch(_){ $('#gateHost').textContent='gateway'; }
+(function init(){
+  const s=localStorage.getItem(SESS_KEY);
+  if(s){ try{ const o=JSON.parse(s); if(o.email&&o.token){ attemptLogin(o.email,o.token); return; } }catch(_){} }
+  showGate('');
+})();
 </script>
 <!-- GW:ARTIFACT-END -->
 </body>
