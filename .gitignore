@@ -1,5 +1,8 @@
-# Memory files - never commit
-.claude/
+# Local Claude settings may hold secrets — never commit that file.
+# Commands/skills under .claude ARE shared (they must be in the repo so any
+# cloud session can run them, e.g. /consult), so keep them tracked.
+.claude/settings.local.json
+.claude/settings.json
 
 # Other local projects in this folder - separate repos
 NAC-PROPERTY-HUB.html
