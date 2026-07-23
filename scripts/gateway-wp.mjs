@@ -35,7 +35,9 @@ const WP_PASS   = process.env.WP_APP_PASSWORD;
 const SLUG      = process.env.WP_GATEWAY_SLUG || 'client-gateway';
 const TITLE     = process.env.WP_GATEWAY_TITLE || 'Client Gateway';
 const STATUS    = process.env.WP_STATUS || 'private';
-const SAMPLE    = process.env.WP_TEMPLATE_SAMPLE_SLUG || 'property-hub';
+// Default sample = the Malta brochure page (verified live, raw-HTML template that
+// echoes raw_html_code). Override with WP_TEMPLATE_SAMPLE_SLUG for a different one.
+const SAMPLE    = process.env.WP_TEMPLATE_SAMPLE_SLUG || 'chuong-trinh-malta-thuong-tru-nhan-rbi';
 const ACF_FIELD = process.env.WP_ACF_FIELD || 'raw_html_code';
 const HTML_PATH = join(__dirname, '..', 'client-gateway.html');
 
