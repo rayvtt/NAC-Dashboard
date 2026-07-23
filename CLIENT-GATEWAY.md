@@ -51,9 +51,10 @@ Creates `nomadassetcollective.com/client-gateway/` and keeps it in sync.
    - *Secrets* → New → `WP_APP_PASSWORD` = your WP Application Password
      (same value the Property-Hub / Brochures repos use). If your WP user isn't
      `admin_web`, also add `WP_USER`.
-   - *Variables* → New → `WP_TEMPLATE_SAMPLE_SLUG` = the slug of an existing page
-     that renders raw HTML, so the new page inherits its template
-     (e.g. `property-hub`, or a brochure slug). *(Optional but recommended.)*
+   - *Variables* → `WP_TEMPLATE_SAMPLE_SLUG` — **optional**. The script already
+     defaults to `chuong-trinh-malta-thuong-tru-nhan-rbi` (the Malta brochure —
+     a verified live raw-HTML page), so the new page inherits a working template.
+     Only set this to override with a different raw-HTML page slug.
 2. **Run it:** Actions tab → **"Sync Client Gateway → WordPress"** → *Run workflow*
    → status **private** → Run. The log prints the page URL.
    *(It also runs automatically on every push that touches `client-gateway.html`.)*
